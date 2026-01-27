@@ -60,7 +60,7 @@
     overflow: hidden;
   }
   .toolbar::before{
-    content:;
+    content:"";
     position:absolute;
     inset:-2px -2px auto -2px;
     height: 70px;
@@ -76,7 +76,7 @@
 
   /* 버튼 */
   .btn{
-   background: rgba(255,255,255,0.80);
+    background: rgba(255,255,255,0.80);
     color: rgba(17,24,39,0.80);
     border: 1px solid rgba(17,24,39,0.10);
     padding: 10px 16px;
@@ -87,7 +87,7 @@
     box-shadow: 0 10px 24px rgba(17,24,39,0.12);
   }
   .btn:hover{
-    background: var(--accent-hover);
+    background: rgba(255,255,255,0.92);
     transform: translateY(-2px);
     box-shadow: 0 14px 34px rgba(17,24,39,0.16);
   }
@@ -378,7 +378,6 @@
   }
   .modal-btn.primary:hover{ background: rgba(17,24,39,0.86); }
 </style>
-```
 
 </head>
 <body>
