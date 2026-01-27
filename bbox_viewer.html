@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BBox Viewer</title>
-    아래 CSS로 **전체 톤을 “라이트 그레이 + 파스텔 글로우 + 글래스 카드 + 소프트 섀도우”**로 바꿔줘. (그대로 `<style>` 통째로 교체)
-
-```html
 <style>
   :root{
     --bg: #f4f6fb;
@@ -79,9 +76,9 @@
 
   /* 버튼 */
   .btn{
-    background: var(--accent);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.12);
+   background: rgba(255,255,255,0.80);
+    color: rgba(17,24,39,0.80);
+    border: 1px solid rgba(17,24,39,0.10);
     padding: 10px 16px;
     border-radius: 16px;
     cursor: pointer;
@@ -387,8 +384,8 @@
 <body>
     <div class="container">
         <div class="toolbar">
-            <button class="btn" id="btnLoadJson">📄 json 선택</button>
-            <button class="btn secondary" id="btnLoadImages">🖼️ 이미지 선택</button>
+            <button class="btn" id="btnLoadJson">📄 1.json 선택</button>
+            <button class="btn secondary" id="btnLoadImages">🖼️ 2.이미지 선택</button>
         </div>
 
         <div class="main">
