@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBox Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .toolbar {
+            background: white;
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: #4338ca;
+            transform: translateY(-2px);
+        }
+
+        .btn.secondary {
+            background: #6b7280;
+        }
+
+        .btn.secondary:hover {
+            background: #4b5563;
+        }
+
+        .main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+        }
+
+        .image-list {
+            list-style: none;
+        }
+
+        .image-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .image-item:hover {
+            background: #f9fafb;
+        }
+
+        .image-item.active {
+            background: #eef2ff;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+
+        .image-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .annotation-badge {
+            background: #e0e7ff;
+            color: #4f46e5;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        .image-item.active .annotation-badge {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: #2d3748;
+            position: relative;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+        }
+
+        .status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: none;
+            z-index: 100;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.error {
+            background: #fee;
+            color: #c00;
+        }
+
+        .status.success {
+            background: #efe;
+            color: #060;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .legend.show {
+            display: block;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid #333;
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .info-item {
+            margin-bottom: 4px;
+        }
+
+        .info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .current-annotation-count {
+            color: #4f46e5;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .keyboard-hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #6b7280;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            max-width: 400px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-btn.primary {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .modal-btn.primary:hover {
+            background: #4338ca;
+        }
+
+        .modal-btn.secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .modal-btn.secondary:hover {
+            background: #e5e7eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="toolbar">
+            <button class="btn" id="btnLoadJson">📄 json 선택</button>
+            <button class="btn secondary" id="btnLoadImages">🖼️ 이미지 선택</button>
+        </div>
+
+        <div class="main">
+            <div class="sidebar">
+                <ul class="image-list" id="imageList"></ul>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="canvas"></canvas>
+                <div class="status" id="status">이미지를 찾을 수 없습니다</div>
+                <div class="legend" id="legend">
+                    <div class="legend-title">클래스 범례</div>
+                    <div id="legendContent"></div>
+                </div>
+                <div class="info-panel" id="infoPanel" style="display: none;">
+                    <div class="info-item"><strong>전체 이미지:</strong> <span id="jsonCount">0</span>개</div>
+                    <div class="info-item"><strong>전체 어노테이션:</strong> <span id="annotationCount">0</span>개</div>
+                    <div class="info-item"><strong>현재 이미지:</strong> <span class="current-annotation-count" id="currentAnnotationCount">-</span>개</div>
+                </div>
+                <div class="keyboard-hint">
+                    ⬆️ ⬇️ 이미지 이동
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 선택 모달 -->
+    <div class="modal" id="jsonModal">
+        <div class="modal-content">
+            <div class="modal-title">📄 JSON 선택 방식</div>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" id="btnJsonFiles">파일 선택</button>
+                <button class="modal-btn primary" id="btnJsonFolder">폴더 선택</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="imageModal">
+        <div class="modal-content">
+            <div class="modal-title">🖼️ 이미지 선택 방식</div>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" id="btnImageFiles">파일 선택</button>
+                <button class="modal-btn primary" id="btnImageFolder">폴더 선택</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let imageFiles = {};
+        let annotationsByImage = {};
+        let classMap = {};
+        let imageList = {};
+        let colorMap = {};
+        let allAnnotations = [];
+        let currentImageIndex = -1;
+        let imageIdArray = [];
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const imageListEl = document.getElementById('imageList');
+        const status = document.getElementById('status');
+        const legend = document.getElementById('legend');
+        const legendContent = document.getElementById('legendContent');
+        const infoPanel = document.getElementById('infoPanel');
+        const jsonModal = document.getElementById('jsonModal');
+        const imageModal = document.getElementById('imageModal');
+
+        function resetAll() {
+            imageFiles = {};
+            annotationsByImage = {};
+            classMap = {};
+            imageList = {};
+            colorMap = {};
+            allAnnotations = [];
+            currentImageIndex = -1;
+            imageIdArray = [];
+            
+            imageListEl.innerHTML = '';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            legend.classList.remove('show');
+            infoPanel.style.display = 'none';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (imageIdArray.length === 0) return;
+
+            if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                e.preventDefault();
+                navigateImage(-1);
+            } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                e.preventDefault();
+                navigateImage(1);
+            }
+        });
+
+        function navigateImage(direction) {
+            if (imageIdArray.length === 0) return;
+
+            currentImageIndex += direction;
+
+            if (currentImageIndex < 0) {
+                currentImageIndex = 0;
+            } else if (currentImageIndex >= imageIdArray.length) {
+                currentImageIndex = imageIdArray.length - 1;
+            }
+
+            const imgId = imageIdArray[currentImageIndex];
+            const fileName = imageList[imgId];
+            displayImage(imgId, fileName);
+
+            const activeItem = document.querySelector('.image-item.active');
+            if (activeItem) {
+                activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // JSON 선택 버튼
+        document.getElementById('btnLoadJson').addEventListener('click', () => {
+            jsonModal.classList.add('show');
+        });
+
+        // 이미지 선택 버튼
+        document.getElementById('btnLoadImages').addEventListener('click', () => {
+            imageModal.classList.add('show');
+        });
+
+        // JSON 파일 선택
+        document.getElementById('btnJsonFiles').addEventListener('click', () => {
+            jsonModal.classList.remove('show');
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json,.txt';
+            input.multiple = true;
+            
+            input.onchange = async (e) => {
+                resetAll();
+                const files = Array.from(e.target.files);
+                await loadAnnotationFiles(files);
+            };
+            
+            input.click();
+        });
+
+        // JSON 폴더 선택
+        document.getElementById('btnJsonFolder').addEventListener('click', () => {
+            jsonModal.classList.remove('show');
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.setAttribute('webkitdirectory', '');
+            input.setAttribute('directory', '');
+            
+            input.onchange = async (e) => {
+                resetAll();
+                const files = Array.from(e.target.files);
+                await loadAnnotationFiles(files);
+            };
+            
+            input.click();
+        });
+
+        // 이미지 파일 선택
+        document.getElementById('btnImageFiles').addEventListener('click', () => {
+            imageModal.classList.remove('show');
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.multiple = true;
+            
+            input.onchange = (e) => {
+                const files = Array.from(e.target.files);
+                loadImageFiles(files);
+            };
+            
+            input.click();
+        });
+
+        // 이미지 폴더 선택
+        document.getElementById('btnImageFolder').addEventListener('click', () => {
+            imageModal.classList.remove('show');
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.setAttribute('webkitdirectory', '');
+            input.setAttribute('directory', '');
+            
+            input.onchange = (e) => {
+                const files = Array.from(e.target.files);
+                loadImageFiles(files);
+            };
+            
+            input.click();
+        });
+
+        // 모달 배경 클릭 시 닫기
+        jsonModal.addEventListener('click', (e) => {
+            if (e.target === jsonModal) {
+                jsonModal.classList.remove('show');
+            }
+        });
+
+        imageModal.addEventListener('click', (e) => {
+            if (e.target === imageModal) {
+                imageModal.classList.remove('show');
+            }
+        });
+
+        async function loadAnnotationFiles(files) {
+            if (!files || files.length === 0) return;
+
+            let jsonCount = 0;
+            let yoloCount = 0;
+            let labelmeCount = 0;
+
+            for (const file of files) {
+                if (file.name.endsWith('.json')) {
+                    try {
+                        const text = await file.text();
+                        const data = JSON.parse(text);
+                        
+                        // LabelMe format
+                        if (data.shapes && data.imagePath) {
+                            labelmeCount++;
+                            const baseName = file.name.replace('.json', '');
+                            const imgPath = data.imagePath.split('/').pop().split('.')[0];
+                            
+                            if (!annotationsByImage[imgPath]) {
+                                annotationsByImage[imgPath] = [];
+                            }
+
+                            data.shapes.forEach((shape, idx) => {
+                                if (shape.shape_type === 'rectangle' && shape.points.length === 2) {
+                                    const [[x1, y1], [x2, y2]] = shape.points;
+                                    const x = Math.min(x1, x2);
+                                    const y = Math.min(y1, y2);
+                                    const w = Math.abs(x2 - x1);
+                                    const h = Math.abs(y2 - y1);
+                                    
+                                    const label = shape.label || 'unknown';
+                                    let classId = Object.keys(classMap).find(id => classMap[id] === label);
+                                    if (!classId) {
+                                        classId = Object.keys(classMap).length;
+                                        classMap[classId] = label;
+                                    }
+
+                                    const ann = {
+                                        id: `${imgPath}_${idx}`,
+                                        image_id: imgPath,
+                                        category_id: parseInt(classId),
+                                        bbox: [x, y, w, h],
+                                        label: label
+                                    };
+                                    
+                                    annotationsByImage[imgPath].push(ann);
+                                    allAnnotations.push(ann);
+                                }
+                            });
+
+                            imageList[imgPath] = data.imagePath;
+                        }
+                        // COCO format
+                        else if (data.annotations && Array.isArray(data.annotations)) {
+                            jsonCount++;
+                            data.annotations.forEach(ann => {
+                                const imgId = String(ann.image_id);
+                                if (!annotationsByImage[imgId]) {
+                                    annotationsByImage[imgId] = [];
+                                }
+                                annotationsByImage[imgId].push(ann);
+                                allAnnotations.push(ann);
+                            });
+
+                            if (data.categories && Array.isArray(data.categories)) {
+                                data.categories.forEach(cat => {
+                                    classMap[cat.id] = cat.name;
+                                });
+                            }
+
+                            if (data.images && Array.isArray(data.images)) {
+                                data.images.forEach(img => {
+                                    imageList[String(img.id)] = img.file_name;
+                                });
+                            }
+                        }
+                        // Custom format
+                        else if (data.object_annotation && Array.isArray(data.object_annotation)) {
+                            jsonCount++;
+                            data.object_annotation.forEach(obj => {
+                                const imgId = String(obj.image_id);
+                                if (!annotationsByImage[imgId]) {
+                                    annotationsByImage[imgId] = [];
+                                }
+                                annotationsByImage[imgId].push(obj);
+                                allAnnotations.push(obj);
+                                imageList[imgId] = imgId;
+                            });
+                        }
+                    } catch (err) {
+                        console.error('JSON 파싱 오류:', file.name, err);
+                    }
+                }
+                // YOLO TXT
+                else if (file.name.endsWith('.txt')) {
+                    try {
+                        const text = await file.text();
+                        const lines = text.trim().split('\n');
+                        const baseName = file.name.replace('.txt', '');
+                        
+                        if (lines.length > 0 && lines[0].trim() !== '') {
+                            yoloCount++;
+                            
+                            if (!annotationsByImage[baseName]) {
+                                annotationsByImage[baseName] = [];
+                            }
+
+                            lines.forEach((line, idx) => {
+                                const parts = line.trim().split(/\s+/);
+                                if (parts.length >= 5) {
+                                    const [classId, centerX, centerY, width, height] = parts.map(Number);
+                                    
+                                    const ann = {
+                                        id: `${baseName}_${idx}`,
+                                        image_id: baseName,
+                                        category_id: classId,
+                                        class_id: classId,
+                                        yolo: [centerX, centerY, width, height]
+                                    };
+                                    
+                                    annotationsByImage[baseName].push(ann);
+                                    allAnnotations.push(ann);
+                                    
+                                    if (!classMap[classId]) {
+                                        classMap[classId] = `Class ${classId}`;
+                                    }
+                                }
+                            });
+
+                            imageList[baseName] = baseName;
+                        }
+                    } catch (err) {
+                        console.error('YOLO 파싱 오류:', file.name, err);
+                    }
+                }
+            }
+
+            imageIdArray = Object.keys(imageList).sort();
+
+            if (jsonCount > 0 || yoloCount > 0 || labelmeCount > 0) {
+                const msg = [];
+                if (jsonCount > 0) msg.push(`COCO ${jsonCount}개`);
+                if (labelmeCount > 0) msg.push(`LabelMe ${labelmeCount}개`);
+                if (yoloCount > 0) msg.push(`YOLO ${yoloCount}개`);
+                showStatus(`✓ ${msg.join(', ')} 로드 완료`, 'success');
+                updateImageList();
+                updateLegend();
+                updateInfo();
+            } else {
+                showStatus('어노테이션 파일을 찾을 수 없습니다', 'error');
+            }
+        }
+
+        function loadImageFiles(files) {
+            if (!files || files.length === 0) return;
+
+            let count = 0;
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(file.name)) {
+                    const name = file.name.split('.')[0];
+                    imageFiles[name] = file;
+                    count++;
+                }
+            });
+
+            if (count > 0) {
+                showStatus(`✓ 이미지 ${count}개 로드 완료`, 'success');
+                updateInfo();
+            } else {
+                showStatus('이미지 파일을 찾을 수 없습니다', 'error');
+            }
+        }
+
+        function updateImageList() {
+            imageListEl.innerHTML = '';
+            imageIdArray.forEach((imgId, index) => {
+                const fileName = imageList[imgId];
+                const annotationCount = (annotationsByImage[imgId] || []).length;
+                
+                const li = document.createElement('li');
+                li.className = 'image-item';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'image-name';
+                nameSpan.textContent = `${imgId} | ${fileName}`;
+                
+                const badge = document.createElement('span');
+                badge.className = 'annotation-badge';
+                badge.textContent = annotationCount;
+                
+                li.appendChild(nameSpan);
+                li.appendChild(badge);
+                
+                li.dataset.imgId = imgId;
+                li.dataset.fileName = fileName;
+                li.dataset.index = index;
+                li.addEventListener('click', () => {
+                    currentImageIndex = index;
+                    displayImage(imgId, fileName);
+                });
+                imageListEl.appendChild(li);
+            });
+        }
+
+        function getColorForCategory(catId) {
+            if (!colorMap[catId]) {
+                const hash = catId * 37;
+                const hue = hash % 360;
+                colorMap[catId] = `hsl(${hue}, 80%, 60%)`;
+            }
+            return colorMap[catId];
+        }
+
+        function updateLegend() {
+            legendContent.innerHTML = '';
+            Object.entries(classMap).forEach(([id, name]) => {
+                const div = document.createElement('div');
+                div.className = 'legend-item';
+                
+                const colorBox = document.createElement('div');
+                colorBox.className = 'legend-color';
+                colorBox.style.backgroundColor = getColorForCategory(parseInt(id));
+                
+                const label = document.createElement('span');
+                label.textContent = name;
+                
+                div.appendChild(colorBox);
+                div.appendChild(label);
+                legendContent.appendChild(div);
+            });
+
+            if (Object.keys(classMap).length > 0) {
+                legend.classList.add('show');
+            }
+        }
+
+        function updateInfo() {
+            document.getElementById('jsonCount').textContent = Object.keys(imageList).length;
+            document.getElementById('annotationCount').textContent = allAnnotations.length;
+            infoPanel.style.display = 'block';
+        }
+
+        async function displayImage(imgId, fileName) {
+            document.querySelectorAll('.image-item').forEach(el => {
+                el.classList.remove('active');
+                if (el.dataset.imgId === imgId) {
+                    el.classList.add('active');
+                }
+            });
+
+            const baseName = fileName.split('.')[0];
+            const imageFile = imageFiles[baseName];
+
+            if (!imageFile) {
+                showStatus(`이미지를 찾을 수 없습니다: ${fileName}`, 'error');
+                return;
+            }
+
+            const img = new Image();
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+
+                const annotations = annotationsByImage[imgId] || [];
+                
+                document.getElementById('currentAnnotationCount').textContent = annotations.length;
+
+                annotations.forEach(ann => {
+                    let x, y, w, h;
+                    
+                    // YOLO 포맷
+                    if (ann.yolo) {
+                        const [centerX, centerY, width, height] = ann.yolo;
+                        const actualCenterX = centerX * img.width;
+                        const actualCenterY = centerY * img.height;
+                        const actualWidth = width * img.width;
+                        const actualHeight = height * img.height;
+                        
+                        x = actualCenterX - actualWidth / 2;
+                        y = actualCenterY - actualHeight / 2;
+                        w = actualWidth;
+                        h = actualHeight;
+                    }
+                    // COCO/LabelMe 포맷
+                    else if (ann.bbox) {
+                        [x, y, w, h] = ann.bbox;
+                    } else {
+                        return;
+                    }
+
+                    const catId = ann.category_id || ann.class_id || 0;
+                    const color = getColorForCategory(catId);
+
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(x, y, w, h);
+
+                    let label = ann.object_name_kr || ann.label || '';
+                    let desc = ann.object_description_kr || '';
+                    let combined = '';
+
+                    if (label && desc) {
+                        combined = `${label} ${desc}`;
+                    } else if (label) {
+                        combined = label;
+                    } else if (desc) {
+                        combined = desc;
+                    } else if (classMap[catId]) {
+                        combined = classMap[catId];
+                    }
+
+                    if (combined) {
+                        ctx.font = 'bold 14px sans-serif';
+                        const textMetrics = ctx.measureText(combined);
+                        const textHeight = 20;
+                        const padding = 4;
+
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                        ctx.fillRect(
+                            x, 
+                            y - textHeight - padding, 
+                            textMetrics.width + padding * 2, 
+                            textHeight + padding
+                        );
+
+                        ctx.fillStyle = 'black';
+                        ctx.fillText(combined, x + padding, y - padding - 4);
+                    }
+                });
+            };
+
+            img.src = URL.createObjectURL(imageFile);
+        }
+
+        function showStatus(message, type = 'info') {
+            status.textContent = message;
+            status.className = `status show ${type}`;
+            setTimeout(() => status.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>
