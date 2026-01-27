@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>폴더 파일 수 분석기</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 1400px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 { color: #1f2937; margin-bottom: 30px; font-size: 28px; text-align: center; }
+        .upload-area {
+            border: 3px dashed #d1d5db;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            background: #f9fafb;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 30px;
+        }
+        .upload-area:hover { border-color: #667eea; background: #eef2ff; }
+        .upload-icon { font-size: 48px; margin-bottom: 15px; }
+        .upload-text { color: #6b7280; font-size: 16px; }
+        input[type="file"] { display: none; }
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .status.info { background: #dbeafe; color: #1e40af; }
+        .status.success { background: #d1fae5; color: #065f46; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            display: none;
+            background: white;
+        }
+        table.show { display: table; }
+        th {
+            background: #4f46e5;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #4338ca;
+            position: sticky;
+            top: 0;
+        }
+        td {
+            padding: 10px 12px;
+            border: 1px solid #e5e7eb;
+            color: #1f2937;
+            background: white;
+        }
+        td.indent-1 { padding-left: 30px; }
+        td.indent-2 { padding-left: 50px; }
+        td.indent-3 { padding-left: 70px; }
+        td.indent-4 { padding-left: 90px; }
+        tr:hover td { background: #f9fafb; }
+        td.number { text-align: center; font-weight: 600; color: #4f46e5; }
+        .file-types { font-size: 12px; color: #6b7280; margin-top: 4px; }
+        .file-type-badge {
+            display: inline-block;
+            background: #f3f4f6;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-right: 6px;
+            margin-bottom: 4px;
+        }
+        .btn-group { display: none; gap: 15px; }
+        .btn-group.show { display: flex; }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+        }
+        .btn.secondary { background: #6b7280; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn.secondary:hover { background: #4b5563; box-shadow: 0 5px 15px rgba(107, 114, 128, 0.4); }
+        .btn:active { transform: translateY(0); }
+        .summary {
+            background: #eef2ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .summary.show { display: block; }
+        .summary-item {
+            display: inline-block;
+            margin-right: 30px;
+            color: #4338ca;
+            font-weight: 600;
+        }
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 20px;
+        }
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .progress.show { display: block; }
+        .progress-bar { height: 100%; background: #667eea; width: 0%; transition: width 0.3s; }
+        .folder-row { background: #f9fafb; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 폴더 파일 수 분석기</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📂</div>
+            <div class="upload-text">
+                <strong>폴더를 선택하세요</strong><br>
+                <small>클릭하여 폴더 선택</small>
+            </div>
+            <input type="file" id="folderInput" webkitdirectory directory multiple>
+        </div>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <div class="summary" id="summary"></div>
+
+        <div class="table-container">
+            <table id="resultTable">
+                <thead>
+                    <tr>
+                        <th>폴더 경로</th>
+                        <th style="text-align: center; width: 120px;">파일 개수</th>
+                        <th style="width: 400px;">파일 형식</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="btn-group" id="btnGroup">
+            <button class="btn secondary" id="newAnalysisBtn">🔄 새로운 분석</button>
+            <button class="btn" id="downloadBtn">📥 엑셀 다운로드</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        let currentData = [];
+        let rootFolderName = '';
+
+        const uploadArea = document.getElementById('uploadArea');
+        const folderInput = document.getElementById('folderInput');
+        const status = document.getElementById('status');
+        const summary = document.getElementById('summary');
+        const resultTable = document.getElementById('resultTable');
+        const tableBody = document.getElementById('tableBody');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const newAnalysisBtn = document.getElementById('newAnalysisBtn');
+        const btnGroup = document.getElementById('btnGroup');
+        const progress = document.getElementById('progress');
+        const progressBar = document.getElementById('progressBar');
+
+        uploadArea.addEventListener('click', () => {
+            folderInput.click();
+        });
+
+        folderInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            processFiles(files);
+        });
+
+        newAnalysisBtn.addEventListener('click', () => {
+            resetUI();
+            folderInput.click();
+        });
+
+        function resetUI() {
+            currentData = [];
+            rootFolderName = '';
+            tableBody.innerHTML = '';
+            resultTable.classList.remove('show');
+            btnGroup.classList.remove('show');
+            summary.classList.remove('show');
+            status.style.display = 'none';
+            uploadArea.style.display = 'block';
+            folderInput.value = '';
+        }
+
+        function processFiles(files) {
+            if (files.length === 0) {
+                showStatus('폴더가 비어있거나 파일을 찾을 수 없습니다.', 'info');
+                return;
+            }
+
+            uploadArea.style.display = 'none';
+            progress.classList.add('show');
+            progressBar.style.width = '50%';
+
+            const folderMap = new Map();
+            const firstPath = files[0].webkitRelativePath || '';
+            rootFolderName = firstPath.split('/')[0] || '선택한 폴더';
+
+            files.forEach(file => {
+                const path = file.webkitRelativePath || file.name;
+                const pathParts = path.split('/');
+                
+                if (file.name.startsWith('.')) return;
+                
+                const ext = file.name.split('.').pop().toLowerCase();
+                
+                if (pathParts.length >= 2) {
+                    const directParentPath = pathParts.slice(0, -1).join('/');
+                    
+                    if (!folderMap.has(directParentPath)) {
+                        folderMap.set(directParentPath, { count: 0, extensions: {} });
+                    }
+                    
+                    const folderData = folderMap.get(directParentPath);
+                    folderData.count++;
+                    if (ext && file.name.includes('.')) {
+                        folderData.extensions[ext] = (folderData.extensions[ext] || 0) + 1;
+                    }
+                }
+            });
+
+            currentData = buildTree(folderMap);
+
+            progressBar.style.width = '100%';
+            setTimeout(() => {
+                progress.classList.remove('show');
+                displayResults();
+            }, 300);
+        }
+
+        function buildTree(folderMap) {
+            const paths = Array.from(folderMap.keys()).sort();
+            const seen = new Set();
+            const tree = [];
+            
+            paths.forEach(path => {
+                if (seen.has(path)) return;
+                seen.add(path);
+                
+                const parts = path.split('/');
+                const depth = parts.length - 1;
+                const name = parts[parts.length - 1];
+                const data = folderMap.get(path);
+                
+                tree.push({
+                    path: path,
+                    name: name,
+                    depth: depth,
+                    count: data.count,
+                    extensions: data.extensions,
+                    displayPath: parts.slice(1).join('/') || name,
+                    pathParts: parts.slice(1)
+                });
+            });
+            
+            return tree;
+        }
+
+        function formatExtensions(extensions) {
+            const sorted = Object.entries(extensions)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+            
+            if (sorted.length === 0) return '-';
+            
+            return sorted.map(([ext, count]) => 
+                `<span class="file-type-badge">${ext}: ${count}개</span>`
+            ).join('');
+        }
+
+        function displayResults() {
+            if (currentData.length === 0) {
+                showStatus('하위 폴더가 없습니다.', 'info');
+                uploadArea.style.display = 'block';
+                return;
+            }
+
+            tableBody.innerHTML = '';
+            
+            const rootRow = document.createElement('tr');
+            rootRow.className = 'folder-row';
+            const totalFiles = currentData.reduce((sum, item) => sum + item.count, 0);
+            
+            const rootExtensions = {};
+            currentData.forEach(item => {
+                Object.entries(item.extensions).forEach(([ext, count]) => {
+                    rootExtensions[ext] = (rootExtensions[ext] || 0) + count;
+                });
+            });
+            
+            rootRow.innerHTML = `
+                <td><strong>📁 ${rootFolderName}</strong></td>
+                <td class="number">${totalFiles}</td>
+                <td><div class="file-types">${formatExtensions(rootExtensions)}</div></td>
+            `;
+            tableBody.appendChild(rootRow);
+
+            const displayedPaths = new Set();
+            
+            currentData.forEach(item => {
+                if (displayedPaths.has(item.displayPath)) return;
+                displayedPaths.add(item.displayPath);
+                
+                const tr = document.createElement('tr');
+                const indentClass = `indent-${Math.min(item.depth, 4)}`;
+                const icon = item.count > 0 ? '📄' : '📁';
+                
+                tr.innerHTML = `
+                    <td class="${indentClass}">${icon} ${item.displayPath}</td>
+                    <td class="number">${item.count}</td>
+                    <td><div class="file-types">${formatExtensions(item.extensions)}</div></td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            const totalFolders = displayedPaths.size;
+            const uniqueExtensions = new Set();
+            currentData.forEach(item => {
+                Object.keys(item.extensions).forEach(ext => uniqueExtensions.add(ext));
+            });
+            
+            summary.innerHTML = `
+                <span class="summary-item">📂 하위 폴더: ${totalFolders}개</span>
+                <span class="summary-item">📄 총 파일: ${totalFiles}개</span>
+                <span class="summary-item">📋 파일 형식: ${uniqueExtensions.size}종류</span>
+            `;
+
+            resultTable.classList.add('show');
+            btnGroup.classList.add('show');
+            summary.classList.add('show');
+            showStatus('✓ 분석 완료', 'success');
+        }
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function getColorForDepth(depth) {
+            const colors = [
+                'FFE4E1',
+                'E0F2FF',
+                'E8F5E9',
+                'FFF9E6',
+                'F3E5F5',
+            ];
+            return colors[depth % colors.length];
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            const excelData = [];
+            const maxDepth = Math.max(...currentData.map(item => item.pathParts.length), 0);
+            const seenPaths = new Set();
+            
+            currentData.forEach(item => {
+                if (seenPaths.has(item.displayPath)) return;
+                seenPaths.add(item.displayPath);
+                
+                const extensions = Object.entries(item.extensions).sort((a, b) => b[1] - a[1]);
+                
+                if (extensions.length === 0) {
+                    const row = {
+                        '선택 파일 명': item.pathParts[0] || item.name,
+                        '총 파일 수': item.count
+                    };
+                    
+                    for (let i = 0; i < maxDepth; i++) {
+                        row[`레벨${i + 1}`] = item.pathParts[i] || '';
+                        row[`레벨${i + 1}_수량`] = '';
+                        row[`레벨${i + 1}_파일`] = '';
+                    }
+                    
+                    excelData.push(row);
+                } else {
+                    extensions.forEach(([ext, count], idx) => {
+                        const row = {
+                            '선택 파일 명': idx === 0 ? (item.pathParts[0] || item.name) : '',
+                            '총 파일 수': idx === 0 ? item.count : ''
+                        };
+                        
+                        for (let i = 0; i < maxDepth; i++) {
+                            if (i < item.pathParts.length - 1) {
+                                row[`레벨${i + 1}`] = item.pathParts[i] || '';
+                                row[`레벨${i + 1}_수량`] = '';
+                                row[`레벨${i + 1}_파일`] = '';
+                            } else if (i === item.pathParts.length - 1) {
+                                row[`레벨${i + 1}`] = item.pathParts[i] || '';
+                                row[`레벨${i + 1}_수량`] = count;
+                                row[`레벨${i + 1}_파일`] = ext;
+                            } else {
+                                row[`레벨${i + 1}`] = '';
+                                row[`레벨${i + 1}_수량`] = '';
+                                row[`레벨${i + 1}_파일`] = '';
+                            }
+                        }
+                        
+                        excelData.push(row);
+                    });
+                }
+            });
+
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '폴더 분석');
+
+            const colWidths = [
+                { wch: 35 },
+                { wch: 12 }
+            ];
+            for (let i = 0; i < maxDepth; i++) {
+                colWidths.push({ wch: 25 });
+                colWidths.push({ wch: 10 });
+                colWidths.push({ wch: 10 });
+            }
+            ws['!cols'] = colWidths;
+
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            let currentFolder = '';
+            let colorIndex = 0;
+            
+            for (let R = 1; R <= range.e.r; ++R) {
+                const folderCell = ws[XLSX.utils.encode_cell({r: R, c: 0})];
+                
+                if (folderCell && folderCell.v) {
+                    currentFolder = folderCell.v;
+                    colorIndex++;
+                }
+                
+                const bgColor = getColorForDepth(colorIndex);
+                
+                for (let C = 0; C <= range.e.c; ++C) {
+                    const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+                    if (!ws[cellAddress]) ws[cellAddress] = {t: 's', v: ''};
+                    
+                    ws[cellAddress].s = {
+                        fill: { fgColor: { rgb: bgColor } },
+                        border: {
+                            top: {style: 'thin', color: {rgb: 'CCCCCC'}},
+                            bottom: {style: 'thin', color: {rgb: 'CCCCCC'}},
+                            left: {style: 'thin', color: {rgb: 'CCCCCC'}},
+                            right: {style: 'thin', color: {rgb: 'CCCCCC'}}
+                        },
+                        alignment: { vertical: 'center', horizontal: 'left' }
+                    };
+                }
+            }
+
+            for (let C = 0; C <= range.e.c; ++C) {
+                const cellAddress = XLSX.utils.encode_cell({r: 0, c: C});
+                ws[cellAddress].s = {
+                    fill: { fgColor: { rgb: '4F46E5' } },
+                    font: { bold: true, color: { rgb: 'FFFFFF' } },
+                    border: {
+                        top: {style: 'thin', color: {rgb: '000000'}},
+                        bottom: {style: 'thin', color: {rgb: '000000'}},
+                        left: {style: 'thin', color: {rgb: '000000'}},
+                        right: {style: 'thin', color: {rgb: '000000'}}
+                    },
+                    alignment: { vertical: 'center', horizontal: 'center' }
+                };
+            }
+
+            const fileName = `폴더_파일수_요약_${rootFolderName}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+
+            showStatus('✓ 다운로드 완료', 'success');
+        });
+    </script>
+</body>
+</html>
