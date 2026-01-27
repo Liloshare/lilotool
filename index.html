@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나의 툴 모음</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 60px;
+        }
+        
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+        
+        .tool-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .tool-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .tool-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        .tool-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        
+        .tool-description {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .tool-tag {
+            display: inline-block;
+            background: #eef2ff;
+            color: #4f46e5;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+        
+        footer {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            margin-top: 60px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛠️ 나의 툴 모음</h1>
+        <p class="subtitle">필요한 도구를 선택하세요</p>
+        
+        <div class="tools-grid">
+            <a href="folder_analyzer.html" class="tool-card">
+                <div class="tool-icon">📁</div>
+                <div class="tool-title">폴더 파일 수 분석기</div>
+                <div class="tool-description">
+                    폴더 내 파일 개수와 형식을 분석하여<br>
+                    엑셀로 정리해주는 도구
+                </div>
+                <span class="tool-tag">파일 관리</span>
+            </a>
+            
+            <a href="tool2.html" class="tool-card">
+                <div class="tool-icon">📊</div>
+                <div class="tool-title">툴 이름 2</div>
+                <div class="tool-description">
+                    이 툴의 설명을 여기에 작성하세요
+                </div>
+                <span class="tool-tag">데이터 분석</span>
+            </a>
+            
+            <a href="tool3.html" class="tool-card">
+                <div class="tool-icon">✏️</div>
+                <div class="tool-title">툴 이름 3</div>
+                <div class="tool-description">
+                    이 툴의 설명을 여기에 작성하세요
+                </div>
+                <span class="tool-tag">편집 도구</span>
+            </a>
+            
+            <!-- 더 추가 -->
+        </div>
+        
+        <footer>
+            Love Lilo
+        </footer>
+    </div>
+</body>
+</html>
