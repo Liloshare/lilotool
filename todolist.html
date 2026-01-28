@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planner</title>
+    <meta name="theme-color" content="#EF6C4A">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #FFF9F5 0%, #FFF5EE 50%, #FFF0E8 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .app-container {
+            width: 420px;
+            height: 720px;
+            background: linear-gradient(180deg, #FFFDFB 0%, #FFF9F5 100%);
+            border-radius: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            resize: both;
+            min-width: 360px;
+            min-height: 500px;
+            max-width: 90vw;
+            max-height: 90vh;
+            position: relative;
+        }
+
+        .corner-decoration {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 60px;
+            height: 60px;
+            background: #1a1a1a;
+            border-radius: 0 32px 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .corner-decoration:hover { background: #333; }
+
+        .corner-decoration svg {
+            width: 20px;
+            height: 20px;
+            color: white;
+        }
+
+        .header { padding: 40px 28px 20px; }
+
+        .app-title {
+            font-size: 36px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+
+        .app-subtitle {
+            font-size: 14px;
+            color: #9ca3af;
+            font-weight: 400;
+        }
+
+        .week-nav { padding: 0 28px; margin-bottom: 8px; }
+
+        .month-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .month-nav span {
+            font-size: 13px;
+            color: #9ca3af;
+            cursor: pointer;
+            transition: color 0.2s;
+            user-select: none;
+        }
+
+        .month-nav span:hover { color: #1a1a1a; }
+
+        .month-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .week-days {
+            display: flex;
+            gap: 8px;
+            justify-content: space-between;
+        }
+
+        .day-pill {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 8px;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: transparent;
+        }
+
+        .day-pill:hover { background: rgba(239, 108, 74, 0.1); }
+
+        .day-pill.active { background: #EF6C4A; }
+
+        .day-pill .day-num {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+
+        .day-pill.active .day-num { color: white; }
+
+        .day-pill .day-name {
+            font-size: 11px;
+            color: #9ca3af;
+            text-transform: uppercase;
+        }
+
+        .day-pill.active .day-name { color: rgba(255, 255, 255, 0.8); }
+
+        .content { flex: 1; overflow-y: auto; padding: 0 28px 20px; }
+
+        .day-section { margin: 20px 0; }
+
+        .day-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .day-header-title { font-size: 20px; font-weight: 700; color: #1a1a1a; }
+
+        .day-header-subtitle { font-size: 13px; color: #9ca3af; font-weight: 400; }
+
+        .progress-badge {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .progress-ring { width: 36px; height: 36px; transform: rotate(-90deg); }
+
+        .progress-ring-bg { fill: none; stroke: #f3f4f6; stroke-width: 3; }
+
+        .progress-ring-fill {
+            fill: none;
+            stroke: #EF6C4A;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .progress-text { font-size: 13px; font-weight: 600; color: #EF6C4A; }
+
+        .task-list { list-style: none; }
+
+        .task-item {
+            display: flex;
+            align-items: flex-start;
+            margin: 8px 0;
+            padding: 16px 20px;
+            background: white;
+            border-radius: 16px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            cursor: grab;
+            position: relative;
+        }
+
+        .task-item:active { cursor: grabbing; }
+
+        .task-item.dragging {
+            opacity: 0.5;
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .task-item.drag-over {
+            border: 2px dashed #EF6C4A;
+            background: rgba(239, 108, 74, 0.05);
+        }
+
+        .task-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .task-item.depth-1 { margin-left: 24px; background: #FAFAFA; }
+        .task-item.depth-2 { margin-left: 48px; background: #F5F5F5; }
+
+        .drag-handle {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            color: #d1d5db;
+            cursor: grab;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .task-item:hover .drag-handle { opacity: 1; }
+
+        .task-checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid #e5e7eb;
+            border-radius: 50%;
+            margin-right: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .task-checkbox:hover { border-color: #EF6C4A; }
+
+        .task-checkbox.checked { background: #EF6C4A; border-color: #EF6C4A; }
+
+        .task-checkbox.checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .task-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            color: #1a1a1a;
+            font-size: 15px;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .task-input::placeholder { color: #d1d5db; font-weight: 400; }
+
+        .task-text {
+            flex: 1;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            line-height: 1.5;
+            color: #1a1a1a;
+            transition: all 0.3s ease;
+        }
+
+        .task-item.completed .task-text,
+        .task-item.completed .task-input {
+            text-decoration: line-through;
+            opacity: 0.5;
+            color: #9ca3af;
+        }
+
+        .controls {
+            padding: 16px 28px 24px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 16px;
+            background: transparent;
+        }
+
+        .slider-controls { display: flex; gap: 20px; align-items: center; }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .slider-label {
+            font-size: 10px;
+            color: #9ca3af;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .slider {
+            width: 70px;
+            height: 4px;
+            border-radius: 2px;
+            background: #e5e7eb;
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #EF6C4A;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(239, 108, 74, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover { transform: scale(1.1); }
+
+        .slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #EF6C4A;
+            cursor: pointer;
+            border: none;
+        }
+
+        .slider::-moz-range-track {
+            width: 70px;
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            border: none;
+        }
+
+        .content::-webkit-scrollbar { width: 4px; }
+        .content::-webkit-scrollbar-track { background: transparent; }
+        .content::-webkit-scrollbar-thumb { background: #EF6C4A; border-radius: 2px; opacity: 0.5; }
+
+        /* 달력 팝업 */
+        .calendar-popup {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 32px;
+            z-index: 200;
+            flex-direction: column;
+            padding: 28px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .calendar-popup.show { display: flex; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .calendar-title { font-size: 28px; font-weight: 700; color: #1a1a1a; }
+
+        .calendar-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            background: #1a1a1a;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .calendar-nav-btn {
+            background: none;
+            border: none;
+            font-size: 14px;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 8px 12px;
+        }
+
+        .calendar-nav-btn:hover { color: #1a1a1a; }
+
+        .calendar-month-title { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .calendar-weekday {
+            text-align: center;
+            font-size: 12px;
+            font-weight: 500;
+            color: #9ca3af;
+            padding: 8px;
+        }
+
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            flex: 1;
+        }
+
+        .calendar-day {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1a1a1a;
+            padding: 4px;
+        }
+
+        .calendar-day:hover { background: rgba(239, 108, 74, 0.1); }
+
+        .calendar-day.other-month { color: #d1d5db; }
+
+        .calendar-day.today { background: #EF6C4A; color: white; }
+        .calendar-day.today:hover { background: #e55a38; }
+
+        .calendar-day .day-number { margin-bottom: 2px; }
+
+        .calendar-day .mini-progress { width: 24px; height: 24px; transform: rotate(-90deg); }
+
+        .calendar-day .mini-progress-bg { fill: none; stroke: #f3f4f6; stroke-width: 2; }
+
+        .calendar-day .mini-progress-fill {
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.3s ease;
+        }
+
+        .calendar-day .mini-progress-fill.low { stroke: #fca5a5; }
+        .calendar-day .mini-progress-fill.medium { stroke: #fcd34d; }
+        .calendar-day .mini-progress-fill.high { stroke: #86efac; }
+        .calendar-day .mini-progress-fill.complete { stroke: #22c55e; }
+
+        .calendar-day.today .mini-progress-bg { stroke: rgba(255,255,255,0.3); }
+
+        .calendar-legend {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .legend-color { width: 12px; height: 12px; border-radius: 50%; }
+
+        @media (max-width: 500px) {
+            .app-container { width: 100vw; height: 100vh; border-radius: 0; resize: none; }
+            .corner-decoration { border-radius: 0 0 0 24px; }
+            .calendar-popup { border-radius: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="appContainer">
+        <div class="corner-decoration" onclick="toggleCalendar()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+        </div>
+
+        <div class="calendar-popup" id="calendarPopup">
+            <div class="calendar-header">
+                <h2 class="calendar-title">Calendar</h2>
+                <button class="calendar-close" onclick="toggleCalendar()">×</button>
+            </div>
+            <div class="calendar-nav">
+                <button class="calendar-nav-btn" onclick="changeCalendarMonth(-1)">← <span id="calPrevMonth">Dec</span></button>
+                <span class="calendar-month-title" id="calCurrentMonth">January 2026</span>
+                <button class="calendar-nav-btn" onclick="changeCalendarMonth(1)"><span id="calNextMonth">Feb</span> →</button>
+            </div>
+            <div class="calendar-weekdays">
+                <div class="calendar-weekday">MON</div>
+                <div class="calendar-weekday">TUE</div>
+                <div class="calendar-weekday">WED</div>
+                <div class="calendar-weekday">THU</div>
+                <div class="calendar-weekday">FRI</div>
+                <div class="calendar-weekday">SAT</div>
+                <div class="calendar-weekday">SUN</div>
+            </div>
+            <div class="calendar-days" id="calendarDays"></div>
+            <div class="calendar-legend">
+                <div class="legend-item"><div class="legend-color" style="background:#fca5a5"></div>0-25%</div>
+                <div class="legend-item"><div class="legend-color" style="background:#fcd34d"></div>26-50%</div>
+                <div class="legend-item"><div class="legend-color" style="background:#86efac"></div>51-99%</div>
+                <div class="legend-item"><div class="legend-color" style="background:#22c55e"></div>100%</div>
+            </div>
+        </div>
+
+        <div class="header">
+            <h1 class="app-title">뚜두</h1>
+            <p class="app-subtitle">매일 성취감을 느낄 수 있는 투두리스트</p>
+        </div>
+
+        <div class="week-nav">
+            <div class="month-nav">
+                <span id="prevMonth" onclick="changeWeek(-7)">← <span id="prevMonthName">Dec</span></span>
+                <span class="month-name" id="currentMonth">January</span>
+                <span id="nextMonth" onclick="changeWeek(7)"><span id="nextMonthName">Mar</span> →</span>
+            </div>
+            <div class="week-days" id="weekDays"></div>
+        </div>
+
+        <div class="content" id="content"></div>
+
+        <div class="controls">
+            <div class="slider-controls">
+                <div class="slider-group">
+                    <span class="slider-label">투명도</span>
+                    <input type="range" class="slider" id="opacitySlider" min="30" max="100" value="100" onchange="changeOpacity(this.value)">
+                </div>
+                <div class="slider-group">
+                    <span class="slider-label">폰트</span>
+                    <input type="range" class="slider" id="fontSlider" min="12" max="20" value="15" onchange="changeFontSize(this.value)">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let draggedItem = null;
+        let currentWeekStart = new Date();
+        let calendarDate = new Date();
+        let allTasks = {};
+
+        function getDateKey(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        function updateDates() {
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+            const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            document.getElementById('currentMonth').textContent = months[currentWeekStart.getMonth()];
+            
+            const prevMonth = currentWeekStart.getMonth() === 0 ? 11 : currentWeekStart.getMonth() - 1;
+            const nextMonth = currentWeekStart.getMonth() === 11 ? 0 : currentWeekStart.getMonth() + 1;
+            document.getElementById('prevMonthName').textContent = shortMonths[prevMonth];
+            document.getElementById('nextMonthName').textContent = shortMonths[nextMonth];
+            
+            renderWeekDays();
+            renderDaySections();
+        }
+
+        function changeWeek(days) {
+            currentWeekStart.setDate(currentWeekStart.getDate() + days);
+            updateDates();
+        }
+
+        function renderWeekDays() {
+            const container = document.getElementById('weekDays');
+            container.innerHTML = '';
+            
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const today = new Date();
+            
+            const startOfWeek = new Date(currentWeekStart);
+            const day = startOfWeek.getDay();
+            const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+            startOfWeek.setDate(diff);
+            
+            for (let i = 0; i < 5; i++) {
+                const date = new Date(startOfWeek);
+                date.setDate(startOfWeek.getDate() + i);
+                const dateKey = getDateKey(date);
+                
+                const pill = document.createElement('div');
+                pill.className = 'day-pill';
+                if (date.toDateString() === today.toDateString()) {
+                    pill.classList.add('active');
+                }
+                
+                pill.innerHTML = `
+                    <span class="day-num">${date.getDate()}</span>
+                    <span class="day-name">${dayNames[date.getDay()]}</span>
+                `;
+                
+                pill.onclick = () => scrollToDate(dateKey);
+                container.appendChild(pill);
+            }
+        }
+
+        function scrollToDate(dateKey) {
+            const section = document.querySelector(`[data-date="${dateKey}"]`);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function renderDaySections() {
+            const content = document.getElementById('content');
+            content.innerHTML = '';
+            
+            const today = new Date();
+            const startOfWeek = new Date(currentWeekStart);
+            const day = startOfWeek.getDay();
+            const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+            startOfWeek.setDate(diff);
+            
+            const dayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+            
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(startOfWeek);
+                date.setDate(startOfWeek.getDate() + i);
+                const dateKey = getDateKey(date);
+                
+                const section = document.createElement('div');
+                section.className = 'day-section';
+                section.dataset.date = dateKey;
+                
+                let label = `${date.getMonth() + 1}/${date.getDate()} (${dayLabels[date.getDay()]})`;
+                let subtitle = '';
+                
+                if (date.toDateString() === today.toDateString()) {
+                    section.classList.add('today');
+                    label = `오늘 (${date.getDate()}일)`;
+                    subtitle = 'Today';
+                } else if (date.toDateString() === new Date(today.getTime() - 86400000).toDateString()) {
+                    label = `어제 (${date.getDate()}일)`;
+                    subtitle = 'Yesterday';
+                } else if (date.toDateString() === new Date(today.getTime() + 86400000).toDateString()) {
+                    label = `내일 (${date.getDate()}일)`;
+                    subtitle = 'Tomorrow';
+                }
+                
+                section.innerHTML = `
+                    <div class="day-header">
+                        <div>
+                            <div class="day-header-title">${label}</div>
+                            ${subtitle ? `<div class="day-header-subtitle">${subtitle}</div>` : ''}
+                        </div>
+                        <div class="progress-badge">
+                            <svg class="progress-ring" viewBox="0 0 36 36">
+                                <circle class="progress-ring-bg" cx="18" cy="18" r="15"/>
+                                <circle class="progress-ring-fill" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="94.2"/>
+                            </svg>
+                            <span class="progress-text">0%</span>
+                        </div>
+                    </div>
+                    <ul class="task-list" data-date="${dateKey}"></ul>
+                `;
+                
+                content.appendChild(section);
+                
+                const taskList = section.querySelector('.task-list');
+                restoreTasksToList(taskList, dateKey);
+            }
+            
+            updateAllProgress();
+            
+            setTimeout(() => {
+                const todaySection = document.querySelector('.day-section.today');
+                if (todaySection) {
+                    todaySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 100);
+        }
+
+        function toggleCalendar() {
+            const popup = document.getElementById('calendarPopup');
+            popup.classList.toggle('show');
+            if (popup.classList.contains('show')) {
+                calendarDate = new Date();
+                renderCalendar();
+            }
+        }
+
+        function changeCalendarMonth(delta) {
+            calendarDate.setMonth(calendarDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function getProgressForDate(dateKey) {
+            const tasks = allTasks[dateKey] || [];
+            if (tasks.length === 0) return -1;
+            const completed = tasks.filter(t => t.completed).length;
+            return Math.round((completed / tasks.length) * 100);
+        }
+
+        function renderCalendar() {
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+            const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            document.getElementById('calCurrentMonth').textContent = 
+                `${months[calendarDate.getMonth()]} ${calendarDate.getFullYear()}`;
+            
+            const prevMonth = calendarDate.getMonth() === 0 ? 11 : calendarDate.getMonth() - 1;
+            const nextMonth = calendarDate.getMonth() === 11 ? 0 : calendarDate.getMonth() + 1;
+            document.getElementById('calPrevMonth').textContent = shortMonths[prevMonth];
+            document.getElementById('calNextMonth').textContent = shortMonths[nextMonth];
+            
+            const container = document.getElementById('calendarDays');
+            container.innerHTML = '';
+            
+            const firstDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1);
+            const lastDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0);
+            const today = new Date();
+            
+            let startDay = firstDay.getDay() - 1;
+            if (startDay < 0) startDay = 6;
+            
+            const prevMonthLastDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 0).getDate();
+            
+            for (let i = startDay - 1; i >= 0; i--) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day other-month';
+                dayEl.innerHTML = `<span class="day-number">${prevMonthLastDay - i}</span>`;
+                container.appendChild(dayEl);
+            }
+            
+            for (let i = 1; i <= lastDay.getDate(); i++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day';
+                
+                const dateKey = `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const progress = getProgressForDate(dateKey);
+                const hasTasks = progress >= 0;
+                
+                let progressClass = 'low';
+                if (progress > 25 && progress <= 50) progressClass = 'medium';
+                else if (progress > 50 && progress < 100) progressClass = 'high';
+                else if (progress === 100) progressClass = 'complete';
+                
+                const isToday = i === today.getDate() && 
+                    calendarDate.getMonth() === today.getMonth() && 
+                    calendarDate.getFullYear() === today.getFullYear();
+                
+                if (isToday) dayEl.classList.add('today');
+                
+                const circumference = 2 * Math.PI * 8;
+                const offset = hasTasks ? circumference - (progress / 100) * circumference : circumference;
+                
+                dayEl.innerHTML = `
+                    <span class="day-number">${i}</span>
+                    ${hasTasks ? `
+                        <svg class="mini-progress" viewBox="0 0 20 20">
+                            <circle class="mini-progress-bg" cx="10" cy="10" r="8"/>
+                            <circle class="mini-progress-fill ${progressClass}" cx="10" cy="10" r="8" 
+                                stroke-dasharray="${circumference}" 
+                                stroke-dashoffset="${offset}"/>
+                        </svg>
+                    ` : ''}
+                `;
+                
+                dayEl.onclick = () => { navigateToDate(calendarDate.getFullYear(), calendarDate.getMonth(), i); };
+                container.appendChild(dayEl);
+            }
+            
+            const remainingDays = 42 - container.children.length;
+            for (let i = 1; i <= remainingDays; i++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day other-month';
+                dayEl.innerHTML = `<span class="day-number">${i}</span>`;
+                container.appendChild(dayEl);
+            }
+        }
+
+        function navigateToDate(year, month, day) {
+            const targetDate = new Date(year, month, day);
+            currentWeekStart = new Date(targetDate);
+            toggleCalendar();
+            updateDates();
+            
+            setTimeout(() => {
+                const dateKey = getDateKey(targetDate);
+                scrollToDate(dateKey);
+            }, 100);
+        }
+
+        function updateProgress(taskList) {
+            const section = taskList.closest('.day-section');
+            const progressBadge = section.querySelector('.progress-badge');
+            
+            const tasks = taskList.querySelectorAll('.task-item');
+            let total = tasks.length;
+            let completed = 0;
+            
+            tasks.forEach(item => { if (item.classList.contains('completed')) completed++; });
+            
+            const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+            const circumference = 94.2;
+            const offset = circumference - (percentage / 100) * circumference;
+            
+            const ring = progressBadge.querySelector('.progress-ring-fill');
+            const text = progressBadge.querySelector('.progress-text');
+            
+            ring.style.strokeDashoffset = offset;
+            text.textContent = percentage + '%';
+            
+            return percentage;
+        }
+
+        function updateAllProgress() {
+            document.querySelectorAll('.task-list').forEach(list => { updateProgress(list); });
+        }
+
+        function handleKeyboard(event) {
+            const input = event.target;
+            const item = input.closest('.task-item');
+            
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const text = input.value.trim();
+                if (text) saveTask(input, text);
+                addNewItem(item);
+
+            } else if (event.key === 'Tab') {
+                event.preventDefault();
+                if (event.shiftKey) decreaseDepth(item);
+                else increaseDepth(item);
+
+            } else if (event.key === 'Backspace' && input.value === '') {
+                event.preventDefault();
+                if (item.classList.contains('depth-1') || item.classList.contains('depth-2')) decreaseDepth(item);
+                else deleteCurrentItem(item);
+            }
+        }
+
+        function saveTask(input, text) {
+            input.style.display = 'none';
+            const span = document.createElement('span');
+            span.className = 'task-text';
+            span.textContent = text;
+            span.onclick = () => editTask(span, input);
+            input.parentElement.appendChild(span);
+            
+            const currentSize = document.getElementById('fontSlider').value;
+            span.style.fontSize = currentSize + 'px';
+            
+            saveToStorage();
+            updateAllProgress();
+        }
+
+        function editTask(span, input) {
+            span.style.display = 'none';
+            input.style.display = 'block';
+            input.value = span.textContent;
+            input.focus();
+        }
+
+        function addNewItem(afterItem) {
+            const list = afterItem.closest('.task-list');
+            const newItem = document.createElement('li');
+            newItem.className = 'task-item';
+            newItem.draggable = true;
+            newItem.innerHTML = `
+                <div class="drag-handle">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                        <circle cx="3" cy="3" r="1.5"/><circle cx="9" cy="3" r="1.5"/>
+                        <circle cx="3" cy="9" r="1.5"/><circle cx="9" cy="9" r="1.5"/>
+                    </svg>
+                </div>
+                <div class="task-checkbox" onclick="toggleTask(this)"></div>
+                <input type="text" class="task-input" placeholder="할 일을 입력하세요..." onkeydown="handleKeyboard(event)">
+            `;
+            afterItem.insertAdjacentElement('afterend', newItem);
+            
+            setupDragAndDrop(newItem);
+            
+            const currentSize = document.getElementById('fontSlider').value;
+            const newInput = newItem.querySelector('.task-input');
+            newInput.style.fontSize = currentSize + 'px';
+            newInput.focus();
+        }
+        /* ✅ 여기서 끝. (원본에는 여기 아래에 여분의 '}'가 하나 더 있었음) */
+
+        function increaseDepth(item) {
+            if (item.classList.contains('depth-2')) return;
+            if (item.classList.contains('depth-1')) {
+                item.classList.remove('depth-1');
+                item.classList.add('depth-2');
+            } else {
+                item.classList.add('depth-1');
+            }
+            saveToStorage();
+        }
+
+        function decreaseDepth(item) {
+            if (item.classList.contains('depth-2')) {
+                item.classList.remove('depth-2');
+                item.classList.add('depth-1');
+            } else if (item.classList.contains('depth-1')) {
+                item.classList.remove('depth-1');
+            }
+            saveToStorage();
+        }
+
+        function deleteCurrentItem(item) {
+            const list = item.closest('.task-list');
+            const items = list.querySelectorAll('.task-item');
+            if (items.length <= 1) return;
+            
+            const prev = item.previousElementSibling;
+            if (prev) {
+                const prevInput = prev.querySelector('.task-input');
+                if (prevInput) {
+                    prevInput.focus();
+                    prevInput.setSelectionRange(prevInput.value.length, prevInput.value.length);
+                }
+            }
+            item.remove();
+            saveToStorage();
+            updateAllProgress();
+        }
+
+        function toggleTask(checkbox) {
+            checkbox.classList.toggle('checked');
+            checkbox.closest('.task-item').classList.toggle('completed');
+            saveToStorage();
+            updateAllProgress();
+        }
+
+        function changeOpacity(value) {
+            const container = document.getElementById('appContainer');
+            container.style.opacity = value / 100;
+            saveSettings();
+        }
+
+        function changeFontSize(value) {
+            const elements = document.querySelectorAll('.task-input, .task-text');
+            elements.forEach(el => { el.style.fontSize = value + 'px'; });
+            saveSettings();
+        }
+
+        function setupDragAndDrop(item) {
+            item.addEventListener('dragstart', handleDragStart);
+            item.addEventListener('dragend', handleDragEnd);
+            item.addEventListener('dragover', handleDragOver);
+            item.addEventListener('dragenter', handleDragEnter);
+            item.addEventListener('dragleave', handleDragLeave);
+            item.addEventListener('drop', handleDrop);
+        }
+
+        function handleDragStart(e) {
+            draggedItem = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.task-item').forEach(item => { item.classList.remove('drag-over'); });
+            draggedItem = null;
+            saveToStorage();
+            updateAllProgress();
+        }
+
+        function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            if (this !== draggedItem) this.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) { this.classList.remove('drag-over'); }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            
+            if (this !== draggedItem && draggedItem) {
+                const list = this.closest('.task-list');
+                const allItems = [...list.querySelectorAll('.task-item')];
+                const draggedIdx = allItems.indexOf(draggedItem);
+                const targetIdx = allItems.indexOf(this);
+                
+                if (draggedIdx < targetIdx) this.insertAdjacentElement('afterend', draggedItem);
+                else this.insertAdjacentElement('beforebegin', draggedItem);
+            }
+        }
+
+        function saveSettings() {
+            const settings = {
+                opacity: document.getElementById('opacitySlider').value,
+                fontSize: document.getElementById('fontSlider').value
+            };
+            localStorage.setItem('plannerSettings', JSON.stringify(settings));
+        }
+
+        function saveToStorage() {
+            document.querySelectorAll('.task-list').forEach(list => {
+                const dateKey = list.dataset.date;
+                const tasks = getTasksFromList(list);
+                const validTasks = tasks.filter(t => t.text);
+                if (validTasks.length > 0) allTasks[dateKey] = validTasks;
+                else delete allTasks[dateKey];
+            });
+            localStorage.setItem('plannerTasks', JSON.stringify(allTasks));
+        }
+
+        function loadFromStorage() {
+            const savedTasks = localStorage.getItem('plannerTasks');
+            if (savedTasks) allTasks = JSON.parse(savedTasks);
+            
+            const savedSettings = localStorage.getItem('plannerSettings');
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                if (settings.opacity) {
+                    document.getElementById('opacitySlider').value = settings.opacity;
+                    document.getElementById('appContainer').style.opacity = settings.opacity / 100;
+                }
+                if (settings.fontSize) document.getElementById('fontSlider').value = settings.fontSize;
+            }
+        }
+
+        function getTasksFromList(list) {
+            const tasks = [];
+            list.querySelectorAll('.task-item').forEach(item => {
+                const taskText = item.querySelector('.task-text');
+                const taskInput = item.querySelector('.task-input');
+                const text = taskText ? taskText.textContent : (taskInput ? taskInput.value.trim() : '');
+                
+                let depth = 0;
+                if (item.classList.contains('depth-1')) depth = 1;
+                if (item.classList.contains('depth-2')) depth = 2;
+                
+                tasks.push({
+                    text: text,
+                    completed: item.classList.contains('completed'),
+                    depth: depth
+                });
+            });
+            return tasks;
+        }
+
+        function restoreTasksToList(list, dateKey) {
+            list.innerHTML = '';
+            const tasks = allTasks[dateKey] || [];
+            
+            tasks.forEach(task => {
+                if (!task.text) return;
+                
+                const item = document.createElement('li');
+                let className = 'task-item';
+                if (task.completed) className += ' completed';
+                if (task.depth === 1) className += ' depth-1';
+                if (task.depth === 2) className += ' depth-2';
+                item.className = className;
+                item.draggable = true;
+                
+                item.innerHTML = `
+                    <div class="drag-handle">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                            <circle cx="3" cy="3" r="1.5"/><circle cx="9" cy="3" r="1.5"/>
+                            <circle cx="3" cy="9" r="1.5"/><circle cx="9" cy="9" r="1.5"/>
+                        </svg>
+                    </div>
+                    <div class="task-checkbox ${task.completed ? 'checked' : ''}" onclick="toggleTask(this)"></div>
+                    <span class="task-text">${task.text}</span>
+                `;
+                
+                const span = item.querySelector('.task-text');
+                span.onclick = () => {
+                    const input = document.createElement('input');
+                    input.className = 'task-input';
+                    input.value = span.textContent;
+                    input.onkeydown = handleKeyboard;
+                    span.style.display = 'none';
+                    item.appendChild(input);
+                    input.focus();
+                    
+                    const currentSize = document.getElementById('fontSlider').value;
+                    input.style.fontSize = currentSize + 'px';
+                };
+                
+                const currentSize = document.getElementById('fontSlider').value;
+                if (currentSize) span.style.fontSize = currentSize + 'px';
+                
+                list.appendChild(item);
+                setupDragAndDrop(item);
+            });
+            
+            const newItem = document.createElement('li');
+            newItem.className = 'task-item';
+            newItem.draggable = true;
+            newItem.innerHTML = `
+                <div class="drag-handle">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                        <circle cx="3" cy="3" r="1.5"/><circle cx="9" cy="3" r="1.5"/>
+                        <circle cx="3" cy="9" r="1.5"/><circle cx="9" cy="9" r="1.5"/>
+                    </svg>
+                </div>
+                <div class="task-checkbox" onclick="toggleTask(this)"></div>
+                <input type="text" class="task-input" placeholder="할 일을 입력하세요..." onkeydown="handleKeyboard(event)">
+            `;
+            list.appendChild(newItem);
+            setupDragAndDrop(newItem);
+            
+            const currentSize = document.getElementById('fontSlider').value;
+            if (currentSize) newItem.querySelector('.task-input').style.fontSize = currentSize + 'px';
+        }
+
+        loadFromStorage();
+        updateDates();
+    </script>
+</body>
+</html>
