@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Field Validator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #1a1a2e;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .header { margin-bottom: 32px; }
+        .header h1 { font-size: 28px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+        .header p { color: #6b7280; font-size: 14px; }
+
+        .main-grid { display: grid; grid-template-columns: 1fr 480px; gap: 24px; }
+        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .card-title { font-size: 18px; font-weight: 600; color: #1a1a2e; }
+        .card-subtitle { font-size: 13px; color: #9ca3af; margin-top: 2px; }
+
+        .drop-zone {
+            border: 2px dashed #e5e7eb;
+            border-radius: 16px;
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(135deg, #fafbfc 0%, #f3f4f6 100%);
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #6366f1;
+            background: linear-gradient(135deg, #f0f0ff 0%, #e8e8ff 100%);
+        }
+
+        .drop-zone .icon {
+            width: 64px; height: 64px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 28px;
+        }
+
+        .drop-zone h3 { font-size: 16px; font-weight: 600; color: #1a1a2e; margin-bottom: 4px; }
+        .drop-zone p { font-size: 13px; color: #9ca3af; }
+
+        .file-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-radius: 12px;
+            margin-top: 16px;
+            font-size: 14px; font-weight: 500; color: #059669;
+        }
+        .file-badge.hidden { display: none; }
+
+        .conditions-section { margin-top: 24px; }
+
+        .condition-card {
+            background: linear-gradient(135deg, #fafbfc 0%, #f3f4f6 100%);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 12px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s;
+        }
+        .condition-card:hover { border-color: #d1d5db; }
+
+        .condition-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+
+        .condition-number {
+            font-size: 12px; font-weight: 600; color: #6366f1;
+            background: #e0e7ff;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .btn-remove {
+            width: 28px; height: 28px;
+            border: none;
+            background: #fee2e2; color: #ef4444;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .btn-remove:hover { background: #fecaca; }
+
+        .input-row { display: grid; grid-template-columns: 1fr 1.5fr; gap: 12px; }
+
+        .input-group label {
+            display: block;
+            font-size: 12px; font-weight: 500; color: #6b7280;
+            margin-bottom: 6px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        .input-group input::placeholder { color: #c4c4c4; }
+
+        .btn-add-condition {
+            width: 100%;
+            padding: 14px;
+            border: 2px dashed #d1d5db;
+            background: transparent;
+            border-radius: 12px;
+            font-size: 14px; font-weight: 500; color: #6b7280;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-add-condition:hover { border-color: #6366f1; color: #6366f1; background: #f5f3ff; }
+
+        .and-badge { display: flex; align-items: center; justify-content: center; margin: -6px 0; position: relative; z-index: 1; }
+        .and-badge span { background: #fef3c7; color: #d97706; font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; }
+
+        .btn-row { display: flex; gap: 12px; margin-top: 20px; }
+
+        .btn-reset {
+            flex: 1;
+            padding: 16px;
+            background: white;
+            color: #6b7280;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            font-size: 15px; font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-reset:hover { background: #f9fafb; border-color: #d1d5db; color: #374151; }
+
+        .btn-run {
+            flex: 2;
+            padding: 16px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px; font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-run:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3); }
+
+        .results-panel { position: sticky; top: 20px; }
+
+        .result-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .stat-card { padding: 16px; border-radius: 14px; text-align: center; }
+        .stat-card.total { background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); }
+        .stat-card.passed { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
+        .stat-card.field-error { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+        .stat-card.value-error { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); }
+
+        .stat-value { font-size: 28px; font-weight: 700; }
+        .stat-card.total .stat-value { color: #6366f1; }
+        .stat-card.passed .stat-value { color: #059669; }
+        .stat-card.field-error .stat-value { color: #d97706; }
+        .stat-card.value-error .stat-value { color: #dc2626; }
+        .stat-label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+        .error-section { margin-top: 20px; }
+        .error-section-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .error-section-title.field-error { color: #d97706; }
+        .error-section-title.value-error { color: #dc2626; }
+
+        .error-list { max-height: 600px; overflow-y: auto; }
+        .error-item { padding: 12px 14px; background: #f9fafb; border-radius: 10px; margin-bottom: 8px; font-size: 13px; border-left: 3px solid; }
+        .error-item.field-error { border-left-color: #f59e0b; }
+        .error-item.value-error { border-left-color: #ef4444; }
+        .error-item .filename { font-weight: 600; color: #1a1a2e; margin-bottom: 4px; }
+        .error-item .detail { font-size: 12px; color: #6b7280; }
+        .error-item .detail span { color: #f59e0b; font-weight: 500; }
+
+        .all-passed { text-align: center; padding: 40px 20px; }
+        .all-passed .icon { font-size: 48px; margin-bottom: 12px; }
+        .all-passed p { font-size: 15px; color: #059669; font-weight: 500; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: #9ca3af; }
+        .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+
+        #fileInput { display: none; }
+        .hidden { display: none !important; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 JSON Field Validator</h1>
+            <p>JSON 파일의 특정 필드값을 검사합니다</p>
+        </div>
+
+        <div class="main-grid">
+            <div class="left-panel">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">파일 업로드</div>
+                            <div class="card-subtitle">JSON 파일 또는 폴더 선택</div>
+                        </div>
+                    </div>
+                    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                        <div class="icon">📁</div>
+                        <h3>파일을 선택하세요</h3>
+                        <p>클릭하거나 드래그 앤 드롭</p>
+                    </div>
+                    <input type="file" id="fileInput" multiple accept=".json" webkitdirectory>
+                    <div class="file-badge hidden" id="fileBadge">
+                        <span>✓</span>
+                        <span id="fileCountText">0개 파일 로드됨</span>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 24px;">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">검사 조건</div>
+                            <div class="card-subtitle">중첩 필드는 점(.)으로 구분 (예: object.name)</div>
+                        </div>
+                    </div>
+                    <div class="conditions-section" id="conditionsContainer"></div>
+                    <button class="btn-add-condition" onclick="addCondition()">
+                        <span>+</span> 조건 추가
+                    </button>
+                    <div class="btn-row">
+                        <button class="btn-reset" onclick="resetAll()">↺ 초기화</button>
+                        <button class="btn-run" onclick="runValidation()">🔍 검사 실행</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-panel">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">검사 결과</div>
+                            <div class="card-subtitle" id="resultSubtitle">검사를 실행해주세요</div>
+                        </div>
+                    </div>
+
+                    <div id="emptyState" class="empty-state">
+                        <div class="icon">📊</div>
+                        <p>검사 결과가 여기에 표시됩니다</p>
+                    </div>
+
+                    <div id="resultsContent" class="hidden">
+                        <div class="result-stats">
+                            <div class="stat-card total"><div class="stat-value" id="totalCount">0</div><div class="stat-label">전체</div></div>
+                            <div class="stat-card passed"><div class="stat-value" id="passedCount">0</div><div class="stat-label">통과</div></div>
+                            <div class="stat-card field-error"><div class="stat-value" id="fieldErrorCount">0</div><div class="stat-label">필드 오류</div></div>
+                            <div class="stat-card value-error"><div class="stat-value" id="valueErrorCount">0</div><div class="stat-label">값 오류</div></div>
+                        </div>
+
+                        <div id="allPassed" class="all-passed hidden">
+                            <div class="icon">✅</div>
+                            <p>모든 파일이 검사를 통과했습니다!</p>
+                        </div>
+
+                        <div class="error-section hidden" id="fieldErrorSection">
+                            <div class="error-section-title field-error">⚠️ 필드 오류</div>
+                            <div class="error-list" id="fieldErrorList"></div>
+                        </div>
+
+                        <div class="error-section hidden" id="valueErrorSection">
+                            <div class="error-section-title value-error">❌ 값 오류</div>
+                            <div class="error-list" id="valueErrorList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let jsonFiles = [];
+        let conditionCount = 0;
+
+        document.addEventListener('DOMContentLoaded', () => { addCondition(); setupFileInput(); });
+
+        function setupFileInput() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+            dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+
+            dropZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                const items = e.dataTransfer.items;
+                const files = [];
+                for (const item of items) {
+                    const entry = item.webkitGetAsEntry();
+                    if (entry) await traverseEntry(entry, files);
+                }
+                processFiles(files);
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files).filter(f => f.name.endsWith('.json'));
+                processFiles(files);
+            });
+        }
+
+        async function traverseEntry(entry, files) {
+            if (entry.isFile) {
+                const file = await new Promise(resolve => entry.file(resolve));
+                if (file.name.endsWith('.json')) files.push(file);
+            } else if (entry.isDirectory) {
+                const reader = entry.createReader();
+                const entries = await new Promise(resolve => reader.readEntries(resolve));
+                for (const e of entries) await traverseEntry(e, files);
+            }
+        }
+
+        async function processFiles(files) {
+            jsonFiles = [];
+            for (const file of files) {
+                try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    jsonFiles.push({ name: file.name, data });
+                } catch (err) { console.error(`Failed to parse ${file.name}:`, err); }
+            }
+            document.getElementById('fileBadge').classList.remove('hidden');
+            document.getElementById('fileCountText').textContent = `${jsonFiles.length}개 파일 로드됨`;
+        }
+
+        function addCondition() {
+            conditionCount++;
+            const container = document.getElementById('conditionsContainer');
+            
+            if (conditionCount > 1) {
+                const andBadge = document.createElement('div');
+                andBadge.className = 'and-badge';
+                andBadge.id = `and-${conditionCount}`;
+                andBadge.innerHTML = '<span>AND</span>';
+                container.appendChild(andBadge);
+            }
+
+            const card = document.createElement('div');
+            card.className = 'condition-card';
+            card.id = `condition-${conditionCount}`;
+            card.innerHTML = `
+                <div class="condition-header">
+                    <span class="condition-number">조건 ${conditionCount}</span>
+                    ${conditionCount > 1 ? `<button class="btn-remove" onclick="removeCondition(${conditionCount})">×</button>` : ''}
+                </div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>필드명</label>
+                        <input type="text" class="field-input" placeholder="object.name">
+                    </div>
+                    <div class="input-group">
+                        <label>허용 클래스 (쉼표 구분)</label>
+                        <input type="text" class="class-input" placeholder="traffic_sign, car">
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        }
+
+        function removeCondition(id) {
+            document.getElementById(`condition-${id}`)?.remove();
+            document.getElementById(`and-${id}`)?.remove();
+            renumberConditions();
+        }
+
+        function renumberConditions() {
+            document.querySelectorAll('.condition-card').forEach((card, idx) => {
+                const num = card.querySelector('.condition-number');
+                if (num) num.textContent = `조건 ${idx + 1}`;
+            });
+        }
+
+        function getConditions() {
+            const conditions = [];
+            document.querySelectorAll('.condition-card').forEach(card => {
+                const field = card.querySelector('.field-input').value.trim();
+                const classInput = card.querySelector('.class-input').value.trim();
+                if (field && classInput) {
+                    const classes = classInput.split(',').map(v => {
+                        const t = v.trim();
+                        const n = Number(t);
+                        return isNaN(n) ? t : n;
+                    });
+                    conditions.push({ field, classes });
+                }
+            });
+            return conditions;
+        }
+
+        function findFieldValues(obj, fieldPath, values = []) {
+            if (obj === null || obj === undefined) return values;
+            
+            const parts = fieldPath.split('.');
+            const currentField = parts[0];
+            const remainingPath = parts.slice(1).join('.');
+            
+            if (Array.isArray(obj)) {
+                for (const item of obj) findFieldValues(item, fieldPath, values);
+            } else if (typeof obj === 'object') {
+                for (const key in obj) {
+                    if (key === currentField) {
+                        if (remainingPath) {
+                            // 더 깊이 탐색
+                            findFieldValues(obj[key], remainingPath, values);
+                        } else {
+                            // 최종 필드 도달
+                            values.push(obj[key]);
+                        }
+                    }
+                }
+            }
+            return values;
+        }
+
+        function hasField(obj, fieldPath) {
+            if (obj === null || obj === undefined) return false;
+            
+            const parts = fieldPath.split('.');
+            const currentField = parts[0];
+            const remainingPath = parts.slice(1).join('.');
+            
+            if (Array.isArray(obj)) {
+                for (const item of obj) if (hasField(item, fieldPath)) return true;
+            } else if (typeof obj === 'object') {
+                for (const key in obj) {
+                    if (key === currentField) {
+                        if (remainingPath) {
+                            if (hasField(obj[key], remainingPath)) return true;
+                        } else {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function resetAll() {
+            // 파일 초기화
+            jsonFiles = [];
+            document.getElementById('fileInput').value = '';
+            document.getElementById('fileBadge').classList.add('hidden');
+            
+            // 조건 초기화
+            conditionCount = 0;
+            document.getElementById('conditionsContainer').innerHTML = '';
+            addCondition();
+            
+            // 결과 초기화
+            document.getElementById('emptyState').classList.remove('hidden');
+            document.getElementById('resultsContent').classList.add('hidden');
+            document.getElementById('resultSubtitle').textContent = '검사를 실행해주세요';
+        }
+
+        function runValidation() {
+            if (jsonFiles.length === 0) { alert('JSON 파일을 먼저 업로드하세요.'); return; }
+            const conditions = getConditions();
+            if (conditions.length === 0) { alert('최소 하나의 검사 조건을 입력하세요.'); return; }
+
+            const fieldErrors = [], valueErrors = [];
+            let passedCount = 0;
+
+            for (const file of jsonFiles) {
+                const missingFields = [], invalidResults = [];
+
+                // 모든 조건 검사 (continue 없이 전부 확인)
+                for (let i = 0; i < conditions.length; i++) {
+                    const cond = conditions[i];
+                    const condNum = i + 1;
+                    
+                    if (!hasField(file.data, cond.field)) {
+                        missingFields.push({ condNum, field: cond.field });
+                        continue;
+                    }
+
+                    const values = findFieldValues(file.data, cond.field);
+                    const isSingle = cond.classes.length === 1;
+
+                    if (isSingle) {
+                        const invalid = values.filter(v => v !== cond.classes[0]);
+                        if (invalid.length > 0) {
+                            invalidResults.push({ condNum, field: cond.field, values: [...new Set(invalid)] });
+                        }
+                    } else {
+                        const hasMatch = values.some(v => cond.classes.includes(v));
+                        if (!hasMatch) {
+                            invalidResults.push({ condNum, field: cond.field, values: [...new Set(values)] });
+                        }
+                    }
+                }
+
+                // 결과 분류
+                if (missingFields.length > 0) {
+                    fieldErrors.push({ filename: file.name, missingFields, invalidResults });
+                } else if (invalidResults.length > 0) {
+                    valueErrors.push({ filename: file.name, invalidResults });
+                } else {
+                    passedCount++;
+                }
+            }
+
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('resultsContent').classList.remove('hidden');
+            document.getElementById('totalCount').textContent = jsonFiles.length;
+            document.getElementById('passedCount').textContent = passedCount;
+            document.getElementById('fieldErrorCount').textContent = fieldErrors.length;
+            document.getElementById('valueErrorCount').textContent = valueErrors.length;
+
+            const fes = document.getElementById('fieldErrorSection');
+            const fel = document.getElementById('fieldErrorList');
+            if (fieldErrors.length > 0) {
+                fes.classList.remove('hidden');
+                fel.innerHTML = fieldErrors.map(e => `
+                    <div class="error-item field-error">
+                        <div class="filename">📄 ${e.filename}</div>
+                        ${e.missingFields.map(f => `<div class="detail">${f.field}: <span>필드 없음</span></div>`).join('')}
+                        ${e.invalidResults && e.invalidResults.length > 0 ? e.invalidResults.map(r => `<div class="detail">${r.field}: <span>${r.values.join(', ')}</span></div>`).join('') : ''}
+                    </div>
+                `).join('');
+            } else fes.classList.add('hidden');
+
+            const ves = document.getElementById('valueErrorSection');
+            const vel = document.getElementById('valueErrorList');
+            if (valueErrors.length > 0) {
+                ves.classList.remove('hidden');
+                vel.innerHTML = valueErrors.map(e => `
+                    <div class="error-item value-error">
+                        <div class="filename">📄 ${e.filename}</div>
+                        ${e.invalidResults.map(r => `<div class="detail">${r.field}: <span>${r.values.join(', ')}</span></div>`).join('')}
+                    </div>
+                `).join('');
+            } else ves.classList.add('hidden');
+
+            const ap = document.getElementById('allPassed');
+            ap.classList.toggle('hidden', fieldErrors.length > 0 || valueErrors.length > 0);
+
+            document.getElementById('resultSubtitle').textContent = `${conditions.length}개 조건으로 검사 완료`;
+        }
+    </script>
+</body>
+</html>
