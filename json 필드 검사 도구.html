@@ -167,7 +167,7 @@
         .btn-run {
             flex: 2;
             padding: 16px;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            background: linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%);
             color: white;
             border: none;
             border-radius: 14px;
@@ -176,7 +176,7 @@
             transition: all 0.3s;
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .btn-run:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3); }
+        .btn-run:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(249, 115, 22, 0.3); }
 
         .results-panel { position: sticky; top: 20px; }
 
@@ -254,7 +254,7 @@
                     <div class="card-header">
                         <div>
                             <div class="card-title">검사 조건</div>
-                            <div class="card-subtitle">클래스가 속한 필드와 클래스 입력</div>
+                            <div class="card-subtitle">중첩 필드는 점(.)으로 구분 (예: object.name)</div>
                         </div>
                     </div>
                     <div class="conditions-section" id="conditionsContainer"></div>
@@ -387,7 +387,7 @@
                 </div>
                 <div class="input-row">
                     <div class="input-group">
-                        <label>필드명 (중첩 필드는 점(.)으로 구분)</label>
+                        <label>필드명</label>
                         <input type="text" class="field-input" placeholder="object.name">
                     </div>
                     <div class="input-group">
