@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSR 이미지 크롭 저장</title>
+    
+<style>
+  :root{
+    --bg: #f4f6fb;
+    --text: #111827;
+    --muted: rgba(17,24,39,0.55);
+    --border: rgba(17,24,39,0.10);
+    --card: rgba(255,255,255,0.78);
+    --shadow: 0 18px 45px rgba(17,24,39,0.12);
+    --radius: 26px;
+    --accent-dark: rgba(17,24,39,0.92);
+    --accent-dark-hover: rgba(17,24,39,0.86);
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  body{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+    background:
+      radial-gradient(1200px 600px at 15% 10%, rgba(167,139,250,0.18), transparent 55%),
+      radial-gradient(900px 500px at 85% 15%, rgba(56,189,248,0.16), transparent 55%),
+      radial-gradient(1000px 600px at 70% 85%, rgba(251,113,133,0.14), transparent 55%),
+      var(--bg);
+    min-height: 100vh;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    padding: 22px;
+    color: var(--text);
+  }
+
+  .container{
+    width: 100%;
+    max-width: 900px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 34px;
+    position:relative;
+    overflow:hidden;
+    margin-top: 20px;
+  }
+  .container::before{
+    content:"";
+    position:absolute;
+    inset:-2px -2px auto -2px;
+    height: 110px;
+    background: linear-gradient(135deg,
+      rgba(167,139,250,0.35),
+      rgba(56,189,248,0.30),
+      rgba(251,113,133,0.22)
+    );
+    opacity:.85;
+    pointer-events:none;
+  }
+  .container > *{ position:relative; z-index:1; }
+
+  h1{
+    color: rgba(17,24,39,0.92);
+    margin-bottom: 6px;
+    font-size: 26px;
+    text-align:center;
+    letter-spacing: -0.02em;
+    font-weight: 900;
+  }
+
+  .header{
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .header p{
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .card{
+    background: rgba(255,255,255,0.62);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 20px;
+    box-shadow: 0 14px 34px rgba(17,24,39,0.10);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    margin-bottom: 20px;
+  }
+
+  .card-title{
+    font-size: 15px;
+    font-weight: 900;
+    color: rgba(17,24,39,0.85);
+    margin-bottom: 4px;
+  }
+  .card-subtitle{
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .upload-grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 600px){
+    .upload-grid{ grid-template-columns: 1fr; }
+  }
+
+  .drop-zone{
+    border: 2px dashed rgba(17,24,39,0.18);
+    border-radius: 18px;
+    padding: 30px 18px;
+    text-align:center;
+    background: rgba(255,255,255,0.60);
+    cursor:pointer;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .drop-zone:hover, .drop-zone.dragover{
+    border-color: rgba(99,102,241,0.35);
+    background: rgba(255,255,255,0.78);
+    transform: translateY(-2px);
+    box-shadow: 0 18px 45px rgba(17,24,39,0.12);
+  }
+  .drop-zone .icon{ font-size: 32px; margin-bottom: 8px; }
+  .drop-zone h3{
+    font-size: 13px;
+    font-weight: 800;
+    color: rgba(17,24,39,0.80);
+    margin-bottom: 4px;
+  }
+  .drop-zone p{
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .drop-zone.loaded{
+    border-color: rgba(34,197,94,0.40);
+    background: rgba(34,197,94,0.08);
+  }
+  .drop-zone.loaded h3{ color: rgba(22,101,52,1); }
+  input[type="file"]{ display:none; }
+
+  .options-row{
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .option-group{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .option-group label{
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(17,24,39,0.70);
+  }
+  .option-group input[type="number"]{
+    width: 80px;
+    padding: 8px 12px;
+    border: 1px solid rgba(17,24,39,0.10);
+    border-radius: 10px;
+    font-size: 13px;
+    background: rgba(255,255,255,0.80);
+  }
+  .option-group input:focus{
+    outline: none;
+    border-color: rgba(99,102,241,0.40);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.10);
+  }
+
+  .btn-row{
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .btn{
+    flex: 1;
+    padding: 14px 18px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+  }
+  .btn-reset{
+    background: rgba(255,255,255,0.80);
+    color: rgba(17,24,39,0.70);
+    border: 1px solid rgba(17,24,39,0.10);
+  }
+  .btn-reset:hover{
+    background: rgba(255,255,255,0.95);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(17,24,39,0.10);
+  }
+  .btn-run{
+    background: var(--accent-dark);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 12px 28px rgba(17,24,39,0.12);
+  }
+  .btn-run:hover{
+    transform: translateY(-2px);
+    background: var(--accent-dark-hover);
+    box-shadow: 0 16px 38px rgba(17,24,39,0.16);
+  }
+  .btn-run:disabled{
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .progress-section{
+    display: none;
+  }
+  .progress-section.show{ display: block; }
+  .progress-bar-container{
+    width: 100%;
+    height: 10px;
+    background: rgba(17,24,39,0.10);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .progress-bar{
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg,
+      rgba(167,139,250,0.9),
+      rgba(56,189,248,0.85),
+      rgba(251,113,133,0.8)
+    );
+    transition: width .15s ease;
+    border-radius: 999px;
+  }
+  .progress-text{
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .results-section{
+    display: none;
+  }
+  .results-section.show{ display: block; }
+
+  .stats-grid{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat-card{
+    text-align: center;
+    padding: 14px 10px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.70);
+    border: 1px solid rgba(17,24,39,0.08);
+  }
+  .stat-value{
+    font-size: 24px;
+    font-weight: 900;
+    color: rgba(99,102,241,1);
+  }
+  .stat-label{
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .class-list{
+    max-height: 300px;
+    overflow-y: auto;
+    background: rgba(255,255,255,0.70);
+    border: 1px solid rgba(17,24,39,0.08);
+    border-radius: 14px;
+  }
+  .class-item{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(17,24,39,0.06);
+  }
+  .class-item:last-child{ border-bottom: none; }
+  .class-name{
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(17,24,39,0.80);
+  }
+  .class-count{
+    font-size: 12px;
+    font-weight: 800;
+    color: rgba(99,102,241,1);
+    background: rgba(99,102,241,0.12);
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+
+  .download-section{
+    margin-top: 16px;
+  }
+  .btn-download{
+    width: 100%;
+    padding: 14px;
+    background: rgba(34,197,94,0.90);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform .2s, background .2s;
+  }
+  .btn-download:hover{
+    background: rgba(34,197,94,1);
+    transform: translateY(-2px);
+  }
+
+  .hidden{ display: none !important; }
+
+  /* Preview Gallery */
+  .preview-section{ margin-top: 20px; }
+  .preview-header{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .preview-header select{
+    padding: 8px 12px;
+    border: 1px solid rgba(17,24,39,0.10);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.80);
+    cursor: pointer;
+  }
+  .preview-grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    padding: 4px;
+    min-height: 200px;
+  }
+  .preview-item{
+    background: rgba(255,255,255,0.80);
+    border: 2px solid rgba(17,24,39,0.08);
+    border-radius: 12px;
+    padding: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+    position: relative;
+  }
+  .preview-item:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(17,24,39,0.12);
+  }
+  .preview-item.selected{
+    border-color: rgba(239,68,68,0.8);
+    background: rgba(239,68,68,0.08);
+  }
+  .preview-item.selected::after{
+    content: "✓";
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    background: rgba(239,68,68,0.9);
+    color: white;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .preview-item img{
+    width: 100%;
+    height: 80px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: rgba(17,24,39,0.04);
+  }
+  .preview-item .preview-class{
+    font-size: 10px;
+    font-weight: 800;
+    color: rgba(99,102,241,1);
+    margin-top: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .preview-item .preview-name{
+    font-size: 9px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Pagination */
+  .pagination{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .pagination button{
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.80);
+    border: 1px solid rgba(17,24,39,0.10);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .pagination button:hover:not(:disabled){
+    background: rgba(255,255,255,0.95);
+  }
+  .pagination button:disabled{
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .pagination .page-info{
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    min-width: 80px;
+    text-align: center;
+  }
+
+  /* Selection Actions */
+  .selection-bar{
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(239,68,68,0.10);
+    border: 1px solid rgba(239,68,68,0.20);
+    border-radius: 14px;
+    margin-bottom: 12px;
+  }
+  .selection-bar.show{ display: flex; }
+  .selection-info{
+    font-size: 13px;
+    font-weight: 800;
+    color: rgba(153,27,27,1);
+  }
+  .selection-actions{
+    display: flex;
+    gap: 8px;
+  }
+  .btn-select-action{
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform .2s, background .2s;
+    border: none;
+  }
+  .btn-select-action:hover{ transform: translateY(-1px); }
+  .btn-select-clear{
+    background: rgba(255,255,255,0.80);
+    color: rgba(17,24,39,0.70);
+    border: 1px solid rgba(17,24,39,0.10);
+  }
+  .btn-select-download{
+    background: rgba(239,68,68,0.90);
+    color: white;
+  }
+
+  /* Modal */
+  .modal{
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal.show{ display: flex; }
+  .modal-content{
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    max-width: 90vw;
+    max-height: 90vh;
+    text-align: center;
+  }
+  .modal-content img{
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: 12px;
+  }
+  .modal-info{
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .modal-close{
+    margin-top: 12px;
+    padding: 10px 24px;
+    background: var(--accent-dark);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+</style>
+
+</head>
+<body>
+    <div class="modal" id="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <img id="modalImg" src="">
+            <div class="modal-info">
+                <div id="modalClass"></div>
+                <div id="modalName"></div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">닫기</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>✂️ TSR 이미지 크롭 저장</h1>
+            <p>JSON의 bbox2d 좌표로 이미지를 크롭하여 클래스별로 저장</p>
+        </div>
+
+        <div class="card">
+            <div class="card-title">파일 업로드</div>
+            <div class="card-subtitle">이미지 폴더와 JSON 폴더를 각각 선택하세요</div>
+            
+            <div class="upload-grid">
+                <div class="drop-zone" id="imageDropZone" onclick="document.getElementById('imageInput').click()">
+                    <div class="icon">🖼️</div>
+                    <h3 id="imageLabel">이미지 폴더</h3>
+                    <p>jpg, jpeg, png</p>
+                </div>
+                <div class="drop-zone" id="jsonDropZone" onclick="document.getElementById('jsonInput').click()">
+                    <div class="icon">📄</div>
+                    <h3 id="jsonLabel">JSON 폴더</h3>
+                    <p>.json 파일</p>
+                </div>
+            </div>
+            <input type="file" id="imageInput" multiple accept=".jpg,.jpeg,.png" webkitdirectory>
+            <input type="file" id="jsonInput" multiple accept=".json" webkitdirectory>
+        </div>
+
+        <div class="card">
+            <div class="card-title">옵션</div>
+            <div class="options-row">
+                <div class="option-group">
+                    <label>최소 크기 (px)</label>
+                    <input type="number" id="minSize" value="100" min="1">
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn btn-reset" onclick="resetAll()">↺ 초기화</button>
+            <button class="btn btn-run" id="runBtn" onclick="runCrop()">✂️ 크롭 실행</button>
+        </div>
+
+        <div class="card progress-section" id="progressSection">
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-text" id="progressText">준비 중...</div>
+        </div>
+
+        <div class="card results-section" id="resultsSection">
+            <div class="card-title">크롭 결과</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalObjects">0</div>
+                    <div class="stat-label">총 Object</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="savedObjects">0</div>
+                    <div class="stat-label">저장됨</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="classCount">0</div>
+                    <div class="stat-label">클래스 수</div>
+                </div>
+            </div>
+            
+            <div class="card-title" style="margin-top:16px;">클래스별 개수</div>
+            <div class="class-list" id="classList"></div>
+
+            <div class="download-section">
+                <button class="btn-download" id="downloadBtn" onclick="downloadZip()">📦 ZIP 다운로드</button>
+            </div>
+
+            <div class="preview-section">
+                <div class="preview-header">
+                    <div class="card-title">미리보기 <span style="font-weight:500;font-size:12px;color:var(--muted)">(클릭: 선택 / 더블클릭: 확대)</span></div>
+                    <select id="classFilter" onchange="filterPreview()">
+                        <option value="all">전체 클래스</option>
+                    </select>
+                </div>
+                <div class="selection-bar" id="selectionBar">
+                    <span class="selection-info"><span id="selectedCount">0</span>개 선택됨</span>
+                    <div class="selection-actions">
+                        <button class="btn-select-action btn-select-clear" onclick="clearSelection()">선택 해제</button>
+                        <button class="btn-select-action btn-select-download" onclick="downloadSelectedJson()">📄 JSON 다운로드</button>
+                    </div>
+                </div>
+                <div class="preview-grid" id="previewGrid"></div>
+                <div class="pagination" id="pagination">
+                    <button onclick="goToPage(currentPage - 1)">◀ 이전</button>
+                    <span class="page-info"><span id="currentPageNum">1</span> / <span id="totalPageNum">1</span></span>
+                    <button onclick="goToPage(currentPage + 1)">다음 ▶</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        let imageFiles = {};
+        let jsonFiles = [];
+        let croppedResults = [];
+        let currentPage = 1;
+        let filteredResults = [];
+        let selectedItems = new Set();
+        const ITEMS_PER_PAGE = 50;
+
+        document.getElementById('imageInput').addEventListener('change', (e) => {
+            const files = Array.from(e.target.files).filter(f => 
+                /\.(jpg|jpeg|png)$/i.test(f.name)
+            );
+            imageFiles = {};
+            files.forEach(f => { imageFiles[f.name] = f; });
+            
+            console.log(`로드된 이미지 ${files.length}개:`, Object.keys(imageFiles).slice(0, 5), '...');
+            
+            const zone = document.getElementById('imageDropZone');
+            const label = document.getElementById('imageLabel');
+            zone.classList.add('loaded');
+            label.textContent = `✓ ${files.length}개 이미지`;
+        });
+
+        document.getElementById('jsonInput').addEventListener('change', (e) => {
+            jsonFiles = Array.from(e.target.files).filter(f => f.name.endsWith('.json'));
+            
+            const zone = document.getElementById('jsonDropZone');
+            const label = document.getElementById('jsonLabel');
+            zone.classList.add('loaded');
+            label.textContent = `✓ ${jsonFiles.length}개 JSON`;
+        });
+
+        function resetAll() {
+            imageFiles = {};
+            jsonFiles = [];
+            croppedResults = [];
+            filteredResults = [];
+            selectedItems.clear();
+            currentPage = 1;
+            
+            document.getElementById('imageInput').value = '';
+            document.getElementById('jsonInput').value = '';
+            
+            document.getElementById('imageDropZone').classList.remove('loaded');
+            document.getElementById('jsonDropZone').classList.remove('loaded');
+            document.getElementById('imageLabel').textContent = '이미지 폴더';
+            document.getElementById('jsonLabel').textContent = 'JSON 폴더';
+            
+            document.getElementById('progressSection').classList.remove('show');
+            document.getElementById('resultsSection').classList.remove('show');
+        }
+
+        function safeDirName(name) {
+            return name.replace(/[\/\\]/g, '_');
+        }
+
+        async function loadImage(file) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    resolve(img);
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error(`이미지 로드 실패: ${file.name}`));
+                };
+                img.src = url;
+            });
+        }
+
+        function cropAndScale(img, x1, y1, x2, y2, minSize) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            let w = x2 - x1;
+            let h = y2 - y1;
+            
+            let scale = 1;
+            if (w < minSize || h < minSize) {
+                scale = Math.max(minSize / w, minSize / h);
+            }
+            
+            canvas.width = Math.round(w * scale);
+            canvas.height = Math.round(h * scale);
+            
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, x1, y1, w, h, 0, 0, canvas.width, canvas.height);
+            
+            return canvas.toDataURL('image/jpeg', 0.92);
+        }
+
+        async function runCrop() {
+            if (Object.keys(imageFiles).length === 0) {
+                alert('이미지 폴더를 먼저 선택하세요.');
+                return;
+            }
+            if (jsonFiles.length === 0) {
+                alert('JSON 폴더를 먼저 선택하세요.');
+                return;
+            }
+
+            const minSize = parseInt(document.getElementById('minSize').value) || 100;
+            const runBtn = document.getElementById('runBtn');
+            runBtn.disabled = true;
+
+            document.getElementById('progressSection').classList.add('show');
+            document.getElementById('resultsSection').classList.remove('show');
+
+            croppedResults = [];
+            let totalObjects = 0;
+            let savedObjects = 0;
+            const classCounter = {};
+
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+
+            for (let i = 0; i < jsonFiles.length; i++) {
+                const progress = ((i + 1) / jsonFiles.length) * 100;
+                progressBar.style.width = progress + '%';
+                progressText.textContent = `${i + 1} / ${jsonFiles.length} (${progress.toFixed(1)}%)`;
+
+                const jsonFile = jsonFiles[i];
+                try {
+                    const text = await jsonFile.text();
+                    const data = JSON.parse(text);
+
+                    const imageName = data.image_info?.name || data.image_info?.path?.split('/').pop().split('\\').pop();
+                    if (!imageName) continue;
+
+                    const imageFile = imageFiles[imageName];
+                    if (!imageFile) {
+                        // 유사한 파일명 찾기 시도
+                        const similar = Object.keys(imageFiles).find(k => k.includes(imageName.substring(0, 30)));
+                        console.warn(`이미지 없음: ${imageName}`, similar ? `(유사: ${similar})` : '');
+                        continue;
+                    }
+
+                    let img;
+                    try {
+                        img = await loadImage(imageFile);
+                    } catch (imgErr) {
+                        console.warn(imgErr.message);
+                        continue;
+                    }
+                    const jsonBase = jsonFile.name.replace('.json', '');
+
+                    const objects = data.object || [];
+                    for (let idx = 0; idx < objects.length; idx++) {
+                        const obj = objects[idx];
+                        totalObjects++;
+
+                        if (!obj.bbox2d) continue;
+
+                        let tsName = obj.ts_name || obj.name || 'unknown';
+                        if (tsName === 'unknown' && obj.ts_attr) {
+                            for (const [k, v] of Object.entries(obj.ts_attr)) {
+                                if (v === 1) {
+                                    tsName = k;
+                                    break;
+                                }
+                            }
+                        }
+                        tsName = safeDirName(tsName);
+
+                        const bbox = obj.bbox2d;
+                        const x1 = parseInt(bbox.x1);
+                        const y1 = parseInt(bbox.y1);
+                        const x2 = parseInt(bbox.x2);
+                        const y2 = parseInt(bbox.y2);
+
+                        if (x2 <= x1 || y2 <= y1) continue;
+
+                        const dataUrl = cropAndScale(img, x1, y1, x2, y2, minSize);
+                        const fileName = `${jsonBase}_${idx}.jpg`;
+
+                        croppedResults.push({
+                            className: tsName,
+                            fileName: fileName,
+                            dataUrl: dataUrl
+                        });
+
+                        savedObjects++;
+                        classCounter[tsName] = (classCounter[tsName] || 0) + 1;
+                    }
+
+                    URL.revokeObjectURL(img.src);
+                } catch (err) {
+                    console.error(`Error processing ${jsonFile.name}:`, err);
+                }
+            }
+
+            document.getElementById('totalObjects').textContent = totalObjects;
+            document.getElementById('savedObjects').textContent = savedObjects;
+            document.getElementById('classCount').textContent = Object.keys(classCounter).length;
+
+            const classList = document.getElementById('classList');
+            classList.innerHTML = Object.entries(classCounter)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .map(([cls, cnt]) => `
+                    <div class="class-item">
+                        <span class="class-name">${cls}</span>
+                        <span class="class-count">${cnt}</span>
+                    </div>
+                `).join('');
+
+            document.getElementById('resultsSection').classList.add('show');
+            progressText.textContent = '완료!';
+            runBtn.disabled = false;
+
+            // 미리보기 초기화
+            updateClassFilter(classCounter);
+            selectedItems.clear();
+            updateSelectionBar();
+            currentPage = 1;
+            filterPreview();
+        }
+
+        async function downloadZip() {
+            if (croppedResults.length === 0) {
+                alert('크롭된 이미지가 없습니다.');
+                return;
+            }
+
+            const downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.textContent = '압축 중...';
+            downloadBtn.disabled = true;
+
+            const zip = new JSZip();
+
+            for (const item of croppedResults) {
+                const folder = zip.folder(item.className);
+                const base64 = item.dataUrl.split(',')[1];
+                folder.file(item.fileName, base64, { base64: true });
+            }
+
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'cropped_images.zip';
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            downloadBtn.textContent = '📦 ZIP 다운로드';
+            downloadBtn.disabled = false;
+        }
+
+        function updateClassFilter(classCounter) {
+            const filter = document.getElementById('classFilter');
+            filter.innerHTML = '<option value="all">전체 클래스</option>';
+            Object.keys(classCounter).sort().forEach(cls => {
+                filter.innerHTML += `<option value="${cls}">${cls} (${classCounter[cls]})</option>`;
+            });
+        }
+
+        function filterPreview() {
+            const filter = document.getElementById('classFilter').value;
+            filteredResults = filter === 'all' 
+                ? croppedResults 
+                : croppedResults.filter(r => r.className === filter);
+            currentPage = 1;
+            renderPage();
+        }
+
+        function renderPage() {
+            const grid = document.getElementById('previewGrid');
+            const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE) || 1;
+            
+            document.getElementById('currentPageNum').textContent = currentPage;
+            document.getElementById('totalPageNum').textContent = totalPages;
+            
+            // 버튼 활성화/비활성화
+            const buttons = document.querySelectorAll('.pagination button');
+            buttons[0].disabled = currentPage <= 1;
+            buttons[1].disabled = currentPage >= totalPages;
+
+            const start = (currentPage - 1) * ITEMS_PER_PAGE;
+            const end = start + ITEMS_PER_PAGE;
+            const pageItems = filteredResults.slice(start, end);
+
+            grid.innerHTML = '';
+            pageItems.forEach((item, i) => {
+                const globalIndex = start + i;
+                const div = document.createElement('div');
+                div.className = 'preview-item' + (selectedItems.has(item.fileName) ? ' selected' : '');
+                div.dataset.filename = item.fileName;
+                
+                // 클릭: 선택, 더블클릭: 확대
+                div.onclick = () => toggleSelect(item.fileName);
+                div.ondblclick = () => openModal(item);
+                
+                div.innerHTML = `
+                    <img src="${item.dataUrl}" alt="${item.fileName}">
+                    <div class="preview-class">${item.className}</div>
+                    <div class="preview-name">${item.fileName}</div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE) || 1;
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderPage();
+        }
+
+        function toggleSelect(fileName) {
+            if (selectedItems.has(fileName)) {
+                selectedItems.delete(fileName);
+            } else {
+                selectedItems.add(fileName);
+            }
+            
+            // UI 업데이트
+            const item = document.querySelector(`[data-filename="${fileName}"]`);
+            if (item) item.classList.toggle('selected');
+            
+            updateSelectionBar();
+        }
+
+        function updateSelectionBar() {
+            const bar = document.getElementById('selectionBar');
+            const count = document.getElementById('selectedCount');
+            count.textContent = selectedItems.size;
+            bar.classList.toggle('show', selectedItems.size > 0);
+        }
+
+        function clearSelection() {
+            selectedItems.clear();
+            document.querySelectorAll('.preview-item.selected').forEach(el => el.classList.remove('selected'));
+            updateSelectionBar();
+        }
+
+        function downloadSelectedJson() {
+            if (selectedItems.size === 0) {
+                alert('선택된 이미지가 없습니다.');
+                return;
+            }
+
+            // 선택된 파일명에서 원본 JSON 파일명 추출
+            const jsonFileNames = new Set();
+            selectedItems.forEach(fileName => {
+                // fileName: "USA_xxx_001864_0.jpg" → "USA_xxx_001864.json"
+                const baseName = fileName.replace(/\.jpg$/, '').replace(/_\d+$/, '');
+                jsonFileNames.add(baseName + '.json');
+            });
+
+            // 해당 JSON 파일들 찾기
+            const matchedJsonFiles = jsonFiles.filter(f => jsonFileNames.has(f.name));
+
+            if (matchedJsonFiles.length === 0) {
+                alert('해당 JSON 파일을 찾을 수 없습니다.');
+                return;
+            }
+
+            // ZIP으로 다운로드
+            const zip = new JSZip();
+            const promises = matchedJsonFiles.map(async (file) => {
+                const text = await file.text();
+                zip.file(file.name, text);
+            });
+
+            Promise.all(promises).then(() => {
+                zip.generateAsync({ type: 'blob' }).then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `selected_json_${selectedItems.size}files.zip`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+            });
+        }
+
+        function openModal(item) {
+            document.getElementById('modalImg').src = item.dataUrl;
+            document.getElementById('modalClass').textContent = `클래스: ${item.className}`;
+            document.getElementById('modalName').textContent = item.fileName;
+            document.getElementById('modal').classList.add('show');
+        }
+
+        function closeModal(e) {
+            if (!e || e.target.id === 'modal') {
+                document.getElementById('modal').classList.remove('show');
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+    </script>
+</body>
+</html>
