@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TSR 이미지 크롭 저장</title>
+    <title>TSR QC Tool</title>
     
 <style>
   :root{
@@ -544,24 +544,24 @@
 
     <div class="container">
         <div class="header">
-            <h1>✂️ TSR 이미지 크롭 저장</h1>
-            <p>JSON의 bbox2d 좌표로 이미지를 크롭하여 클래스별로 저장</p>
+            <h1>✂️ TSR QC Tool</h1>
+            <p>bbox2d image crop > Quality check by classes</p>
         </div>
 
         <div class="card">
-            <div class="card-title">파일 업로드</div>
-            <div class="card-subtitle">이미지 폴더와 JSON 폴더를 각각 선택하세요</div>
+            <div class="card-title">file upload</div>
+            <div class="card-subtitle">select image folder and json folder</div>
             
             <div class="upload-grid">
                 <div class="drop-zone" id="imageDropZone" onclick="document.getElementById('imageInput').click()">
                     <div class="icon">🖼️</div>
-                    <h3 id="imageLabel">이미지 폴더</h3>
+                    <h3 id="imageLabel">image folder</h3>
                     <p>jpg, jpeg, png</p>
                 </div>
                 <div class="drop-zone" id="jsonDropZone" onclick="document.getElementById('jsonInput').click()">
                     <div class="icon">📄</div>
-                    <h3 id="jsonLabel">JSON 폴더</h3>
-                    <p>.json 파일</p>
+                    <h3 id="jsonLabel">JSON folder</h3>
+                    <p>.json file</p>
                 </div>
             </div>
             <input type="file" id="imageInput" multiple accept=".jpg,.jpeg,.png" webkitdirectory>
@@ -569,70 +569,70 @@
         </div>
 
         <div class="card">
-            <div class="card-title">옵션</div>
+            <div class="card-title">option</div>
             <div class="options-row">
                 <div class="option-group">
-                    <label>최소 크기 (px)</label>
+                    <label>minimum (px)</label>
                     <input type="number" id="minSize" value="100" min="1">
                 </div>
             </div>
         </div>
 
         <div class="btn-row">
-            <button class="btn btn-reset" onclick="resetAll()">↺ 초기화</button>
-            <button class="btn btn-run" id="runBtn" onclick="runCrop()">✂️ 크롭 실행</button>
+            <button class="btn btn-reset" onclick="resetAll()">↺ reset</button>
+            <button class="btn btn-run" id="runBtn" onclick="runCrop()">✂️ run</button>
         </div>
 
         <div class="card progress-section" id="progressSection">
             <div class="progress-bar-container">
                 <div class="progress-bar" id="progressBar"></div>
             </div>
-            <div class="progress-text" id="progressText">준비 중...</div>
+            <div class="progress-text" id="progressText">loading...</div>
         </div>
 
         <div class="card results-section" id="resultsSection">
-            <div class="card-title">크롭 결과</div>
+            <div class="card-title">result</div>
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-value" id="totalObjects">0</div>
-                    <div class="stat-label">총 Object</div>
+                    <div class="stat-label">Total Object</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="savedObjects">0</div>
-                    <div class="stat-label">저장됨</div>
+                    <div class="stat-label">saved</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="classCount">0</div>
-                    <div class="stat-label">클래스 수</div>
+                    <div class="stat-label">class number</div>
                 </div>
             </div>
             
-            <div class="card-title" style="margin-top:16px;">클래스별 개수</div>
+            <div class="card-title" style="margin-top:16px;">number of classes</div>
             <div class="class-list" id="classList"></div>
 
             <div class="download-section">
-                <button class="btn-download" id="downloadBtn" onclick="downloadZip()">📦 ZIP 다운로드</button>
+                <button class="btn-download" id="downloadBtn" onclick="downloadZip()">📦 ZIP download</button>
             </div>
 
             <div class="preview-section">
                 <div class="preview-header">
-                    <div class="card-title">미리보기 <span style="font-weight:500;font-size:12px;color:var(--muted)">(클릭: 선택 / 더블클릭: 확대)</span></div>
+                    <div class="card-title">preview <span style="font-weight:500;font-size:12px;color:var(--muted)">(click: select / double-click: zoom in)</span></div>
                     <select id="classFilter" onchange="filterPreview()">
-                        <option value="all">전체 클래스</option>
+                        <option value="all">Overall classes</option>
                     </select>
                 </div>
                 <div class="selection-bar" id="selectionBar">
-                    <span class="selection-info"><span id="selectedCount">0</span>개 선택됨</span>
+                    <span class="selection-info"><span id="selectedCount">0</span>selected</span>
                     <div class="selection-actions">
-                        <button class="btn-select-action btn-select-clear" onclick="clearSelection()">선택 해제</button>
-                        <button class="btn-select-action btn-select-download" onclick="downloadSelectedJson()">📄 JSON 다운로드</button>
+                        <button class="btn-select-action btn-select-clear" onclick="clearSelection()">unselected</button>
+                        <button class="btn-select-action btn-select-download" onclick="downloadSelectedJson()">📄 JSON download</button>
                     </div>
                 </div>
                 <div class="preview-grid" id="previewGrid"></div>
                 <div class="pagination" id="pagination">
-                    <button onclick="goToPage(currentPage - 1)">◀ 이전</button>
+                    <button onclick="goToPage(currentPage - 1)">◀ pre</button>
                     <span class="page-info"><span id="currentPageNum">1</span> / <span id="totalPageNum">1</span></span>
-                    <button onclick="goToPage(currentPage + 1)">다음 ▶</button>
+                    <button onclick="goToPage(currentPage + 1)">next ▶</button>
                 </div>
             </div>
         </div>
@@ -685,8 +685,8 @@
             
             document.getElementById('imageDropZone').classList.remove('loaded');
             document.getElementById('jsonDropZone').classList.remove('loaded');
-            document.getElementById('imageLabel').textContent = '이미지 폴더';
-            document.getElementById('jsonLabel').textContent = 'JSON 폴더';
+            document.getElementById('imageLabel').textContent = 'image folder';
+            document.getElementById('jsonLabel').textContent = 'JSON folder';
             
             document.getElementById('progressSection').classList.remove('show');
             document.getElementById('resultsSection').classList.remove('show');
@@ -705,7 +705,7 @@
                 };
                 img.onerror = () => {
                     URL.revokeObjectURL(url);
-                    reject(new Error(`이미지 로드 실패: ${file.name}`));
+                    reject(new Error(`image load failed: ${file.name}`));
                 };
                 img.src = url;
             });
@@ -735,11 +735,11 @@
 
         async function runCrop() {
             if (Object.keys(imageFiles).length === 0) {
-                alert('이미지 폴더를 먼저 선택하세요.');
+                alert('image first');
                 return;
             }
             if (jsonFiles.length === 0) {
-                alert('JSON 폴더를 먼저 선택하세요.');
+                alert('JSON first');
                 return;
             }
 
@@ -775,7 +775,7 @@
                     if (!imageFile) {
                         // 유사한 파일명 찾기 시도
                         const similar = Object.keys(imageFiles).find(k => k.includes(imageName.substring(0, 30)));
-                        console.warn(`이미지 없음: ${imageName}`, similar ? `(유사: ${similar})` : '');
+                        console.warn(`empty image: ${imageName}`, similar ? `(유사: ${similar})` : '');
                         continue;
                     }
 
@@ -848,7 +848,7 @@
                 `).join('');
 
             document.getElementById('resultsSection').classList.add('show');
-            progressText.textContent = '완료!';
+            progressText.textContent = 'Completed!';
             runBtn.disabled = false;
 
             // 미리보기 초기화
@@ -861,12 +861,12 @@
 
         async function downloadZip() {
             if (croppedResults.length === 0) {
-                alert('크롭된 이미지가 없습니다.');
+                alert('empty cropped image');
                 return;
             }
 
             const downloadBtn = document.getElementById('downloadBtn');
-            downloadBtn.textContent = '압축 중...';
+            downloadBtn.textContent = 'packing...';
             downloadBtn.disabled = true;
 
             const zip = new JSZip();
@@ -886,13 +886,13 @@
             a.click();
             
             URL.revokeObjectURL(url);
-            downloadBtn.textContent = '📦 ZIP 다운로드';
+            downloadBtn.textContent = '📦 ZIP download';
             downloadBtn.disabled = false;
         }
 
         function updateClassFilter(classCounter) {
             const filter = document.getElementById('classFilter');
-            filter.innerHTML = '<option value="all">전체 클래스</option>';
+            filter.innerHTML = '<option value="all">Overall classes</option>';
             Object.keys(classCounter).sort().forEach(cls => {
                 filter.innerHTML += `<option value="${cls}">${cls} (${classCounter[cls]})</option>`;
             });
