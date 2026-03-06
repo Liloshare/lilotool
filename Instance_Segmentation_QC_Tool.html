@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instance Segmentation QC Tool</title>
+    
+<style>
+  :root{
+    --bg: #f4f6fb;
+    --text: #111827;
+    --muted: rgba(17,24,39,0.55);
+    --border: rgba(17,24,39,0.10);
+    --card: rgba(255,255,255,0.78);
+    --shadow: 0 18px 45px rgba(17,24,39,0.12);
+    --radius: 26px;
+    --accent-dark: rgba(17,24,39,0.92);
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  body{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+    background:
+      radial-gradient(1200px 600px at 15% 10%, rgba(167,139,250,0.18), transparent 55%),
+      radial-gradient(900px 500px at 85% 15%, rgba(56,189,248,0.16), transparent 55%),
+      radial-gradient(1000px 600px at 70% 85%, rgba(251,113,133,0.14), transparent 55%),
+      var(--bg);
+    min-height: 100vh;
+    padding: 22px;
+    color: var(--text);
+  }
+
+  .container{
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
+    padding: 34px;
+    position:relative;
+    overflow:hidden;
+  }
+  .container::before{
+    content:"";
+    position:absolute;
+    inset:-2px -2px auto -2px;
+    height: 110px;
+    background: linear-gradient(135deg, rgba(167,139,250,0.35), rgba(56,189,248,0.30), rgba(251,113,133,0.22));
+    opacity:.85;
+    pointer-events:none;
+  }
+  .container > *{ position:relative; z-index:1; }
+
+  h1{ font-size: 26px; text-align:center; font-weight: 900; margin-bottom: 6px; }
+  .header{ text-align: center; margin-bottom: 24px; }
+  .header p{ color: var(--muted); font-size: 14px; }
+
+  .card{
+    background: rgba(255,255,255,0.62);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 20px;
+    box-shadow: 0 14px 34px rgba(17,24,39,0.10);
+    margin-bottom: 20px;
+  }
+  .card-title{ font-size: 15px; font-weight: 900; margin-bottom: 4px; }
+  .card-subtitle{ font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+
+  .upload-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px){ .upload-grid{ grid-template-columns: 1fr; } }
+
+  .drop-zone{
+    border: 2px dashed rgba(17,24,39,0.18);
+    border-radius: 18px;
+    padding: 30px 18px;
+    text-align:center;
+    background: rgba(255,255,255,0.60);
+    cursor:pointer;
+    transition: all .2s ease;
+  }
+  .drop-zone:hover{ border-color: rgba(99,102,241,0.35); background: rgba(255,255,255,0.78); transform: translateY(-2px); }
+  .drop-zone .icon{ font-size: 32px; margin-bottom: 8px; }
+  .drop-zone h3{ font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+  .drop-zone p{ font-size: 11px; color: var(--muted); }
+  .drop-zone.loaded{ border-color: rgba(34,197,94,0.40); background: rgba(34,197,94,0.08); }
+  .drop-zone.loaded h3{ color: rgba(22,101,52,1); }
+  input[type="file"]{ display:none; }
+
+  .class-config{ margin-top: 16px; }
+  .class-input-group{ margin-bottom: 12px; }
+  .class-input-group label{ display: block; font-size: 12px; font-weight: 700; color: rgba(17,24,39,0.70); margin-bottom: 6px; }
+  .class-input-group textarea{
+    width: 100%; padding: 10px 14px; border: 1px solid rgba(17,24,39,0.10);
+    border-radius: 12px; font-size: 13px; background: rgba(255,255,255,0.80); min-height: 50px; resize: vertical;
+  }
+  .class-input-group textarea:focus{ outline: none; border-color: rgba(99,102,241,0.40); }
+
+  .class-color-list{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; max-height: 120px; overflow-y: auto; padding: 8px; background: rgba(255,255,255,0.50); border-radius: 12px; }
+  .class-color-item{ display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: rgba(255,255,255,0.80); border-radius: 8px; border: 1px solid rgba(17,24,39,0.08); }
+  .class-color-item input[type="color"]{ width: 24px; height: 24px; border: none; border-radius: 6px; cursor: pointer; }
+  .class-color-item span{ font-size: 12px; font-weight: 600; }
+
+  .options-row{ display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+  .option-group{ display: flex; align-items: center; gap: 8px; }
+  .option-group label{ font-size: 13px; font-weight: 700; color: rgba(17,24,39,0.70); }
+  .option-group select{ padding: 8px 12px; border: 1px solid rgba(17,24,39,0.10); border-radius: 10px; font-size: 13px; background: rgba(255,255,255,0.80); }
+
+  .btn-row{ display: flex; gap: 12px; margin-top: 20px; }
+  .btn{ flex: 1; padding: 14px 18px; border-radius: 14px; font-size: 14px; font-weight: 900; cursor: pointer; transition: all .2s ease; }
+  .btn-reset{ background: rgba(255,255,255,0.80); color: rgba(17,24,39,0.70); border: 1px solid rgba(17,24,39,0.10); }
+  .btn-reset:hover{ background: rgba(255,255,255,0.95); transform: translateY(-2px); }
+  .btn-run{ background: var(--accent-dark); color: white; border: none; }
+  .btn-run:hover{ transform: translateY(-2px); }
+  .btn-run:disabled{ opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .progress-section{ display: none; }
+  .progress-section.show{ display: block; }
+  .progress-bar-container{ width: 100%; height: 10px; background: rgba(17,24,39,0.10); border-radius: 999px; overflow: hidden; margin-bottom: 8px; }
+  .progress-bar{ height: 100%; width: 0%; background: linear-gradient(90deg, rgba(167,139,250,0.9), rgba(56,189,248,0.85)); transition: width .15s ease; }
+  .progress-text{ font-size: 12px; color: var(--muted); text-align: center; }
+
+  .results-section{ display: none; }
+  .results-section.show{ display: block; }
+
+  .stats-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 600px){ .stats-grid{ grid-template-columns: repeat(2, 1fr); } }
+  .stat-card{ text-align: center; padding: 14px 10px; border-radius: 14px; background: rgba(255,255,255,0.70); border: 1px solid rgba(17,24,39,0.08); }
+  .stat-value{ font-size: 24px; font-weight: 900; color: rgba(99,102,241,1); }
+  .stat-value.success{ color: rgba(34,197,94,1); }
+  .stat-value.error{ color: rgba(239,68,68,1); }
+  .stat-label{ font-size: 11px; font-weight: 800; color: var(--muted); margin-top: 2px; }
+
+  .issue-list{ max-height: 150px; overflow-y: auto; background: rgba(255,255,255,0.70); border: 1px solid rgba(17,24,39,0.08); border-radius: 14px; margin-bottom: 16px; }
+  .issue-item{ display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; border-bottom: 1px solid rgba(17,24,39,0.06); font-size: 12px; }
+  .issue-item:last-child{ border-bottom: none; }
+  .issue-item.error{ background: rgba(239,68,68,0.08); }
+  .issue-item.warning{ background: rgba(245,158,11,0.08); }
+  .issue-badge{ font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
+  .issue-badge.error{ background: rgba(239,68,68,0.15); color: rgba(220,38,38,1); }
+  .issue-badge.warning{ background: rgba(245,158,11,0.15); color: rgba(180,83,9,1); }
+
+  .toolbar{ display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .toolbar-left, .toolbar-right{ display: flex; gap: 8px; align-items: center; }
+  .page-info{ font-size: 13px; font-weight: 700; color: rgba(17,24,39,0.70); }
+  .toolbar-btn{ padding: 8px 16px; border: 1px solid rgba(17,24,39,0.10); border-radius: 10px; background: rgba(255,255,255,0.80); font-size: 12px; font-weight: 700; cursor: pointer; }
+  .toolbar-btn:hover{ background: rgba(255,255,255,0.95); }
+  .toolbar-btn:disabled{ opacity: 0.4; cursor: not-allowed; }
+  .toolbar-btn.danger{ background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: rgba(220,38,38,1); }
+  .toolbar-btn.danger:hover{ background: rgba(239,68,68,0.2); }
+  .toolbar-btn.primary{ background: linear-gradient(135deg, rgba(99,102,241,0.9), rgba(139,92,246,0.9)); color: white; border: none; }
+
+  .thumb-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .thumb-item{ position: relative; border-radius: 12px; overflow: hidden; cursor: pointer; border: 3px solid transparent; transition: all .2s ease; aspect-ratio: 16/9; background: #000; }
+  .thumb-item:hover{ transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+  .thumb-item.selected{ border-color: rgba(239,68,68,0.8); }
+  .thumb-item canvas{ width: 100%; height: 100%; object-fit: contain; }
+  .thumb-label{ position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); color: white; padding: 20px 8px 6px; font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thumb-check{ position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.9); border: 2px solid rgba(17,24,39,0.2); display: flex; align-items: center; justify-content: center; font-size: 12px; opacity: 0; transition: opacity .2s; }
+  .thumb-item.selected .thumb-check{ opacity: 1; background: rgba(239,68,68,1); border-color: rgba(239,68,68,1); color: white; }
+  .thumb-item:hover .thumb-check{ opacity: 1; }
+
+  .class-legend{ display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: rgba(255,255,255,0.70); border-radius: 12px; margin-bottom: 16px; }
+  .legend-item{ display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; }
+  .legend-color{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
+
+  /* Modal */
+  .modal-overlay{ position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.show{ display: flex; }
+  .modal-content{ background: var(--card); border-radius: 20px; max-width: 95vw; max-height: 95vh; overflow: hidden; position: relative; }
+  .modal-header{ display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .modal-title{ font-size: 14px; font-weight: 800; }
+  .modal-nav{ display: flex; gap: 8px; }
+  .modal-close{ width: 32px; height: 32px; border-radius: 50%; border: none; background: rgba(17,24,39,0.1); cursor: pointer; font-size: 18px; }
+  .modal-body{ padding: 20px; display: flex; gap: 20px; max-height: calc(95vh - 140px); overflow: auto; }
+  .modal-canvas-wrap{ flex: 1; min-width: 0; }
+  .modal-canvas-wrap canvas{ width: 100%; height: auto; border-radius: 12px; }
+  .modal-info{ width: 250px; flex-shrink: 0; }
+  .modal-info-row{ display: flex; justify-content: space-between; font-size: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .modal-info-label{ color: var(--muted); }
+  .modal-info-value{ font-weight: 700; }
+  .modal-footer{ padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+
+  .hidden{ display: none !important; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🎯 Instance Segmentation QC Tool</h1>
+    <p>Validate image and label data, visualize masks</p>
+  </div>
+
+  <!-- Upload Section -->
+  <div class="card">
+    <div class="card-title">📁 Data Upload</div>
+    <div class="card-subtitle">Select image folder and label (JSON) folder</div>
+    <div class="upload-grid">
+      <div class="drop-zone" id="imageDropZone">
+        <div class="icon">🖼️</div>
+        <h3>Image Folder</h3>
+        <p>Click to select folder</p>
+        <input type="file" id="imageInput" webkitdirectory multiple>
+      </div>
+      <div class="drop-zone" id="labelDropZone">
+        <div class="icon">📋</div>
+        <h3>Label Folder</h3>
+        <p>Click to select folder (JSON)</p>
+        <input type="file" id="labelInput" webkitdirectory multiple>
+      </div>
+    </div>
+
+    <div class="class-config">
+      <div class="class-input-group">
+        <label>Reference Classes (comma separated)</label>
+        <textarea id="classInput" placeholder="e.g. tractor, farmland, road, edge">tractor, farmland, road, edge</textarea>
+      </div>
+      <div id="classColorList" class="class-color-list"></div>
+    </div>
+
+    <div class="options-row">
+      <div class="option-group">
+        <label>View Mode:</label>
+        <select id="viewMode">
+          <option value="mask">Mask</option>
+          <option value="overlay" selected>Overlay</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label>Opacity:</label>
+        <select id="opacity">
+          <option value="0.3">30%</option>
+          <option value="0.5" selected>50%</option>
+          <option value="0.7">70%</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-reset" onclick="resetAll()">Reset</button>
+      <button class="btn btn-run" id="runBtn" onclick="runValidation()" disabled>Run Validation</button>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="card progress-section" id="progressSection">
+    <div class="card-title">⏳ Processing...</div>
+    <div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="progress-text" id="progressText">Preparing...</div>
+  </div>
+
+  <!-- Results -->
+  <div class="card results-section" id="resultsSection">
+    <div class="card-title">📊 Validation Results</div>
+    
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value" id="statImages">0</div><div class="stat-label">Images</div></div>
+      <div class="stat-card"><div class="stat-value" id="statLabels">0</div><div class="stat-label">Labels</div></div>
+      <div class="stat-card"><div class="stat-value success" id="statMatched">0</div><div class="stat-label">Matched</div></div>
+      <div class="stat-card"><div class="stat-value error" id="statErrors">0</div><div class="stat-label">Errors</div></div>
+    </div>
+
+    <div id="issueList" class="issue-list hidden"></div>
+
+    <div class="class-legend" id="classLegend"></div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button class="toolbar-btn" id="prevPageBtn" onclick="prevPage()">◀ Prev</button>
+        <span class="page-info" id="pageInfo">1 / 1</span>
+        <button class="toolbar-btn" id="nextPageBtn" onclick="nextPage()">Next ▶</button>
+      </div>
+      <div class="toolbar-right">
+        <span id="selectedCount" style="font-size:12px;color:var(--muted);">Selected: 0</span>
+        <button class="toolbar-btn" onclick="selectAll()">Select All</button>
+        <button class="toolbar-btn" onclick="deselectAll()">Deselect All</button>
+        <button class="toolbar-btn primary" id="downloadBtn" onclick="downloadSelectedJson()" disabled>📥 Download Selected JSON</button>
+      </div>
+    </div>
+
+    <!-- Thumbnail Grid -->
+    <div class="thumb-grid" id="thumbGrid"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">파일명</div>
+      <div class="modal-nav">
+        <button class="toolbar-btn" id="modalPrev" onclick="modalPrev()">◀ Prev</button>
+        <button class="toolbar-btn" id="modalNext" onclick="modalNext()">Next ▶</button>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-canvas-wrap" id="modalCanvasWrap"></div>
+      <div class="modal-info" id="modalInfo"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="toolbar-btn" id="modalSelectBtn" onclick="toggleModalSelect()">🚩 Mark as Issue</button>
+      <button class="toolbar-btn primary" onclick="downloadCurrentJson()">📥 Download This JSON</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PAGE_SIZE = 50;
+let imageFiles = [], labelFiles = [], matchedPairs = [];
+let currentPage = 0, modalIndex = 0;
+let classColors = {}, validClasses = [], issues = [];
+let selectedSet = new Set();
+let renderedCanvases = new Map();
+
+const fixedColors = { tractor: '#00FF00', farmland: '#FF0000', road: '#0000FF', edge: '#FF8000' };
+const defaultColors = ['#FF00FF','#00FFFF','#FFFF00','#FF0080','#80FF00','#0080FF','#FF4000','#00FF80','#8000FF','#FF0040','#40FF00','#0040FF'];
+
+const imageDropZone = document.getElementById('imageDropZone');
+const labelDropZone = document.getElementById('labelDropZone');
+const imageInput = document.getElementById('imageInput');
+const labelInput = document.getElementById('labelInput');
+const classInput = document.getElementById('classInput');
+const runBtn = document.getElementById('runBtn');
+
+classInput.addEventListener('input', updateClassColors);
+updateClassColors();
+
+imageDropZone.addEventListener('click', () => imageInput.click());
+labelDropZone.addEventListener('click', () => labelInput.click());
+
+imageInput.addEventListener('change', e => {
+  imageFiles = Array.from(e.target.files).filter(f => /\.(jpg|jpeg|png|bmp|gif)$/i.test(f.name));
+  imageDropZone.classList.add('loaded');
+  imageDropZone.querySelector('h3').textContent = `${imageFiles.length} images`;
+  checkReady();
+});
+
+labelInput.addEventListener('change', e => {
+  labelFiles = Array.from(e.target.files).filter(f => f.name.endsWith('.json'));
+  labelDropZone.classList.add('loaded');
+  labelDropZone.querySelector('h3').textContent = `${labelFiles.length} labels`;
+  checkReady();
+});
+
+function checkReady() { runBtn.disabled = !(imageFiles.length && labelFiles.length); }
+
+function updateClassColors() {
+  validClasses = classInput.value.split(',').map(c => c.trim()).filter(c => c);
+  const list = document.getElementById('classColorList');
+  list.innerHTML = '';
+  let colorIdx = 0;
+  validClasses.forEach((cls) => {
+    if (!classColors[cls]) {
+      classColors[cls] = fixedColors[cls] || defaultColors[colorIdx++ % defaultColors.length];
+    }
+    const item = document.createElement('div');
+    item.className = 'class-color-item';
+    item.innerHTML = `<input type="color" value="${classColors[cls]}" onchange="classColors['${cls}']=this.value"><span>${cls}</span>`;
+    list.appendChild(item);
+  });
+}
+
+// 파일명에서 시간 추출 (예: 20250611_111812_front190_0000000006 -> 111812)
+function extractTime(filename) {
+  const match = filename.match(/_(\d{6})_/);
+  return match ? parseInt(match[1]) : 0;
+}
+
+function getBaseName(fn) { return fn.replace(/\.[^/.]+$/, ''); }
+
+async function runValidation() {
+  const progressSection = document.getElementById('progressSection');
+  const resultsSection = document.getElementById('resultsSection');
+  const progressBar = document.getElementById('progressBar');
+  const progressText = document.getElementById('progressText');
+
+  progressSection.classList.add('show');
+  resultsSection.classList.remove('show');
+  issues = []; matchedPairs = []; selectedSet.clear(); renderedCanvases.clear();
+
+  const imageMap = new Map(), labelMap = new Map();
+  imageFiles.forEach(f => imageMap.set(getBaseName(f.name), f));
+  labelFiles.forEach(f => labelMap.set(getBaseName(f.name), f));
+
+  progressText.textContent = 'Matching files...';
+  progressBar.style.width = '20%';
+
+  if (imageFiles.length !== labelFiles.length) {
+    issues.push({ type: 'warning', text: `File count mismatch: ${imageFiles.length} images vs ${labelFiles.length} labels` });
+  }
+
+  const allNames = new Set([...imageMap.keys(), ...labelMap.keys()]);
+  for (const name of allNames) {
+    const hasImg = imageMap.has(name), hasLbl = labelMap.has(name);
+    if (hasImg && hasLbl) {
+      matchedPairs.push({ baseName: name, imageFile: imageMap.get(name), labelFile: labelMap.get(name) });
+    } else if (hasImg) {
+      issues.push({ type: 'error', text: `Missing label: ${name}` });
+    } else {
+      issues.push({ type: 'error', text: `Missing image: ${name}` });
+    }
+  }
+
+  // 시간순 정렬
+  matchedPairs.sort((a, b) => extractTime(a.baseName) - extractTime(b.baseName));
+
+  progressText.textContent = 'Parsing labels...';
+  const foundClasses = new Set(), invalidClasses = new Set();
+
+  for (let i = 0; i < matchedPairs.length; i++) {
+    const pair = matchedPairs[i];
+    try {
+      const text = await pair.labelFile.text();
+      pair.labelData = JSON.parse(text);
+      pair.labelData.shapes?.forEach(s => {
+        foundClasses.add(s.label);
+        if (validClasses.length && !validClasses.includes(s.label)) invalidClasses.add(s.label);
+      });
+    } catch { issues.push({ type: 'error', text: `JSON error: ${pair.baseName}` }); }
+    progressBar.style.width = `${20 + (i / matchedPairs.length) * 70}%`;
+  }
+
+  invalidClasses.forEach(cls => issues.push({ type: 'warning', text: `Undefined class: "${cls}"` }));
+  let extraColorIdx = 0;
+  foundClasses.forEach((cls) => { if (!classColors[cls]) classColors[cls] = fixedColors[cls] || defaultColors[extraColorIdx++ % defaultColors.length]; });
+
+  progressBar.style.width = '100%';
+  progressText.textContent = 'Done!';
+  setTimeout(() => { progressSection.classList.remove('show'); showResults(); }, 300);
+}
+
+function showResults() {
+  document.getElementById('resultsSection').classList.add('show');
+  document.getElementById('statImages').textContent = imageFiles.length;
+  document.getElementById('statLabels').textContent = labelFiles.length;
+  document.getElementById('statMatched').textContent = matchedPairs.length;
+  document.getElementById('statErrors').textContent = issues.filter(i => i.type === 'error').length;
+
+  const issueList = document.getElementById('issueList');
+  if (issues.length) {
+    issueList.classList.remove('hidden');
+    issueList.innerHTML = issues.map(i => `<div class="issue-item ${i.type}"><span>${i.text}</span><span class="issue-badge ${i.type}">${i.type === 'error' ? 'Error' : 'Warning'}</span></div>`).join('');
+  } else issueList.classList.add('hidden');
+
+  updateLegend();
+  currentPage = 0;
+  renderPage();
+}
+
+function updateLegend() {
+  const allClasses = new Set();
+  matchedPairs.forEach(p => p.labelData?.shapes?.forEach(s => allClasses.add(s.label)));
+  document.getElementById('classLegend').innerHTML = Array.from(allClasses).map(c => `<div class="legend-item"><div class="legend-color" style="background:${classColors[c]||'#888'}"></div><span>${c}</span></div>`).join('');
+}
+
+async function renderPage() {
+  const totalPages = Math.ceil(matchedPairs.length / PAGE_SIZE);
+  document.getElementById('pageInfo').textContent = `${currentPage + 1} / ${totalPages}`;
+  document.getElementById('prevPageBtn').disabled = currentPage === 0;
+  document.getElementById('nextPageBtn').disabled = currentPage >= totalPages - 1;
+
+  const grid = document.getElementById('thumbGrid');
+  grid.innerHTML = '';
+
+  const start = currentPage * PAGE_SIZE;
+  const items = matchedPairs.slice(start, start + PAGE_SIZE);
+  const viewMode = document.getElementById('viewMode').value;
+  const opacity = parseFloat(document.getElementById('opacity').value);
+
+  for (let i = 0; i < items.length; i++) {
+    const pair = items[i];
+    const globalIdx = start + i;
+    const div = document.createElement('div');
+    div.className = 'thumb-item' + (selectedSet.has(globalIdx) ? ' selected' : '');
+    div.innerHTML = `<canvas></canvas><div class="thumb-label">${pair.baseName}</div><div class="thumb-check">✓</div>`;
+    
+    div.addEventListener('click', e => {
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        toggleSelect(globalIdx);
+        div.classList.toggle('selected', selectedSet.has(globalIdx));
+        updateSelectedCount();
+      } else {
+        openModal(globalIdx);
+      }
+    });
+
+    grid.appendChild(div);
+    const canvas = div.querySelector('canvas');
+    await renderThumb(canvas, pair, viewMode, opacity);
+  }
+  updateSelectedCount();
+}
+
+async function renderThumb(canvas, pair, viewMode, opacity) {
+  const img = await loadImage(pair.imageFile);
+  const w = 360, h = Math.round(360 * img.height / img.width);
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  if (viewMode === 'overlay' || viewMode === 'both') {
+    ctx.drawImage(img, 0, 0, w, h);
+    ctx.globalAlpha = opacity;
+  } else {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  const scaleX = w / img.width, scaleY = h / img.height;
+  pair.labelData?.shapes?.forEach(s => {
+    if (s.shape_type === 'polygon' || !s.shape_type) {
+      ctx.fillStyle = classColors[s.label] || '#888';
+      ctx.beginPath();
+      s.points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0] * scaleX, pt[1] * scaleY) : ctx.lineTo(pt[0] * scaleX, pt[1] * scaleY));
+      ctx.closePath(); ctx.fill();
+    }
+  });
+  ctx.globalAlpha = 1;
+}
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = e => { const img = new Image(); img.onload = () => resolve(img); img.src = e.target.result; };
+    r.readAsDataURL(file);
+  });
+}
+
+function prevPage() { if (currentPage > 0) { currentPage--; renderPage(); } }
+function nextPage() { if (currentPage < Math.ceil(matchedPairs.length / PAGE_SIZE) - 1) { currentPage++; renderPage(); } }
+
+function toggleSelect(idx) { selectedSet.has(idx) ? selectedSet.delete(idx) : selectedSet.add(idx); }
+function selectAll() {
+  const start = currentPage * PAGE_SIZE;
+  for (let i = 0; i < PAGE_SIZE && start + i < matchedPairs.length; i++) selectedSet.add(start + i);
+  renderPage();
+}
+function deselectAll() { selectedSet.clear(); renderPage(); }
+function updateSelectedCount() {
+  document.getElementById('selectedCount').textContent = `Selected: ${selectedSet.size}`;
+  document.getElementById('downloadBtn').disabled = selectedSet.size === 0;
+}
+
+async function downloadSelectedJson() {
+  if (!selectedSet.size) return;
+  const JSZip = await loadJSZip();
+  const zip = new JSZip();
+  for (const idx of selectedSet) {
+    const pair = matchedPairs[idx];
+    if (pair?.labelFile) {
+      const text = await pair.labelFile.text();
+      zip.file(pair.labelFile.name, text);
+    }
+  }
+  const blob = await zip.generateAsync({ type: 'blob' });
+  downloadBlob(blob, 'selected_labels.zip');
+}
+
+async function downloadCurrentJson() {
+  const pair = matchedPairs[modalIndex];
+  if (!pair) return;
+  const text = await pair.labelFile.text();
+  downloadBlob(new Blob([text], { type: 'application/json' }), pair.labelFile.name);
+}
+
+function downloadBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function loadJSZip() {
+  return new Promise((resolve) => {
+    if (window.JSZip) return resolve(window.JSZip);
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload = () => resolve(window.JSZip);
+    document.head.appendChild(s);
+  });
+}
+
+// Modal
+async function openModal(idx) {
+  modalIndex = idx;
+  document.getElementById('modal').classList.add('show');
+  await renderModal();
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+async function renderModal() {
+  const pair = matchedPairs[modalIndex];
+  document.getElementById('modalTitle').textContent = pair.baseName;
+  document.getElementById('modalPrev').disabled = modalIndex === 0;
+  document.getElementById('modalNext').disabled = modalIndex === matchedPairs.length - 1;
+
+  const wrap = document.getElementById('modalCanvasWrap');
+  const viewMode = document.getElementById('viewMode').value;
+  const opacity = parseFloat(document.getElementById('opacity').value);
+  const img = await loadImage(pair.imageFile);
+
+  // 기존 캔버스 재사용 또는 생성
+  let canvas = wrap.querySelector('canvas');
+  let label = wrap.querySelector('.canvas-label');
+  if (!canvas) {
+    label = document.createElement('div');
+    label.className = 'canvas-label';
+    label.style.cssText = 'font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;';
+    wrap.appendChild(label);
+    canvas = document.createElement('canvas');
+    canvas.style.marginBottom = '12px';
+    wrap.appendChild(canvas);
+  }
+
+  canvas.width = img.width; 
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+
+  if (viewMode === 'overlay') {
+    ctx.drawImage(img, 0, 0);
+    ctx.globalAlpha = opacity;
+  } else {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, img.width, img.height);
+  }
+
+  pair.labelData?.shapes?.forEach(s => {
+    if (s.shape_type === 'polygon' || !s.shape_type) {
+      ctx.fillStyle = classColors[s.label] || '#888';
+      ctx.beginPath();
+      s.points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+      ctx.closePath(); ctx.fill();
+    }
+  });
+  ctx.globalAlpha = 1;
+  label.textContent = viewMode === 'mask' ? 'Mask' : 'Overlay';
+
+  // Info
+  const shapes = pair.labelData?.shapes || [];
+  const counts = {};
+  shapes.forEach(s => counts[s.label] = (counts[s.label] || 0) + 1);
+
+  document.getElementById('modalInfo').innerHTML = `
+    <div class="modal-info-row"><span class="modal-info-label">Filename</span><span class="modal-info-value">${pair.baseName}</span></div>
+    <div class="modal-info-row"><span class="modal-info-label">Size</span><span class="modal-info-value">${img.width} × ${img.height}</span></div>
+    <div class="modal-info-row"><span class="modal-info-label">Objects</span><span class="modal-info-value">${shapes.length}</span></div>
+    <div class="modal-info-row"><span class="modal-info-label">Classes</span><span class="modal-info-value">${Object.entries(counts).map(([k,v])=>`${k}(${v})`).join(', ')}</span></div>
+  `;
+
+  updateModalSelectBtn();
+}
+
+function modalPrev() { if (modalIndex > 0) { modalIndex--; renderModal(); } }
+function modalNext() { if (modalIndex < matchedPairs.length - 1) { modalIndex++; renderModal(); } }
+
+function toggleModalSelect() {
+  toggleSelect(modalIndex);
+  updateModalSelectBtn();
+  updateSelectedCount();
+  // Update thumb if visible
+  const start = currentPage * PAGE_SIZE;
+  const localIdx = modalIndex - start;
+  if (localIdx >= 0 && localIdx < PAGE_SIZE) {
+    const items = document.querySelectorAll('.thumb-item');
+    if (items[localIdx]) items[localIdx].classList.toggle('selected', selectedSet.has(modalIndex));
+  }
+}
+
+function updateModalSelectBtn() {
+  const btn = document.getElementById('modalSelectBtn');
+  btn.textContent = selectedSet.has(modalIndex) ? '✓ Selected' : '🚩 Mark as Issue';
+  btn.classList.toggle('danger', selectedSet.has(modalIndex));
+}
+
+// Option change
+document.getElementById('viewMode').addEventListener('change', () => { if (matchedPairs.length) renderPage(); });
+document.getElementById('opacity').addEventListener('change', () => { if (matchedPairs.length) renderPage(); });
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  const modalOpen = document.getElementById('modal').classList.contains('show');
+  
+  if (modalOpen) {
+    if (e.key === 'ArrowLeft') modalPrev();
+    else if (e.key === 'ArrowRight') modalNext();
+    else if (e.key === 'Escape') closeModal();
+    else if (e.key === ' ') { e.preventDefault(); toggleModalSelect(); }
+  } else if (matchedPairs.length > 0) {
+    if (e.key === 'ArrowLeft') prevPage();
+    else if (e.key === 'ArrowRight') nextPage();
+  }
+});
+
+function resetAll() {
+  imageFiles = []; labelFiles = []; matchedPairs = []; selectedSet.clear(); issues = [];
+  imageDropZone.classList.remove('loaded');
+  imageDropZone.querySelector('h3').textContent = 'Image Folder';
+  labelDropZone.classList.remove('loaded');
+  labelDropZone.querySelector('h3').textContent = 'Label Folder';
+  imageInput.value = ''; labelInput.value = '';
+  runBtn.disabled = true;
+  document.getElementById('progressSection').classList.remove('show');
+  document.getElementById('resultsSection').classList.remove('show');
+}
+</script>
+</body>
+</html>
