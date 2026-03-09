@@ -182,6 +182,14 @@
   .modal-info-row{ display: flex; justify-content: space-between; font-size: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
   .modal-info-label{ color: var(--muted); }
   .modal-info-value{ font-weight: 700; }
+
+  .instance-list{ margin-top: 12px; max-height: 300px; overflow-y: auto; }
+  .instance-item{ display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: all .15s; border: 2px solid transparent; margin-bottom: 4px; }
+  .instance-item:hover{ background: rgba(99,102,241,0.1); }
+  .instance-item.active{ border-color: rgba(99,102,241,0.6); background: rgba(99,102,241,0.15); }
+  .instance-color{ width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; }
+  .instance-label{ font-size: 12px; font-weight: 600; }
+  .instance-pts{ font-size: 10px; color: var(--muted); margin-left: auto; }
   .modal-footer{ padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
 
   .hidden{ display: none !important; }
@@ -301,6 +309,7 @@
     <div class="modal-body">
       <div class="modal-canvas-wrap" id="modalCanvasWrap"></div>
       <div class="modal-info" id="modalInfo"></div>
+      <div class="instance-list" id="instanceList"></div>
     </div>
     <div class="modal-footer">
       <button class="toolbar-btn" id="modalSelectBtn" onclick="toggleModalSelect()">🚩 Mark as Issue</button>
@@ -316,6 +325,7 @@ let currentPage = 0, modalIndex = 0;
 let classColors = {}, validClasses = [], issues = [];
 let selectedSet = new Set();
 let renderedCanvases = new Map();
+let cocoData = null; // COCO format data
 
 const fixedColors = { tractor: '#00FF00', farmland: '#FF0000', road: '#0000FF', edge: '#FF8000' };
 const defaultColors = ['#FF00FF','#00FFFF','#FFFF00','#FF0080','#80FF00','#0080FF','#FF4000','#00FF80','#8000FF','#FF0040','#40FF00','#0040FF'];
@@ -371,6 +381,51 @@ function extractTime(filename) {
   return match ? parseInt(match[1]) : 0;
 }
 
+// Detect and parse COCO format
+function isCOCOFormat(json) {
+  return json.images && json.annotations && json.categories;
+}
+
+function parseCOCOToLabelMe(cocoJson, imageFileName) {
+  // Find image info
+  const baseName = imageFileName.replace(/\.[^/.]+$/, '');
+  const imageInfo = cocoJson.images.find(img => {
+    const imgBaseName = img.file_name.replace(/^.*\//, '').replace(/\.[^/.]+$/, '');
+    return imgBaseName === baseName;
+  });
+  
+  if (!imageInfo) return null;
+  
+  // Build category map
+  const categoryMap = {};
+  cocoJson.categories.forEach(cat => categoryMap[cat.id] = cat.name);
+  
+  // Get annotations for this image
+  const annotations = cocoJson.annotations.filter(ann => ann.image_id === imageInfo.id);
+  
+  // Convert to LabelMe format
+  const shapes = annotations.map(ann => {
+    const points = [];
+    if (ann.segmentation && ann.segmentation[0]) {
+      const seg = ann.segmentation[0];
+      for (let i = 0; i < seg.length; i += 2) {
+        points.push([seg[i], seg[i + 1]]);
+      }
+    }
+    return {
+      label: categoryMap[ann.category_id] || 'unknown',
+      points: points,
+      shape_type: 'polygon'
+    };
+  });
+  
+  return {
+    shapes: shapes,
+    imageWidth: imageInfo.width,
+    imageHeight: imageInfo.height
+  };
+}
+
 function getBaseName(fn) { return fn.replace(/\.[^/.]+$/, ''); }
 
 async function runValidation() {
@@ -381,32 +436,81 @@ async function runValidation() {
 
   progressSection.classList.add('show');
   resultsSection.classList.remove('show');
-  issues = []; matchedPairs = []; selectedSet.clear(); renderedCanvases.clear();
+  issues = []; matchedPairs = []; selectedSet.clear(); renderedCanvases.clear(); cocoData = null;
 
-  const imageMap = new Map(), labelMap = new Map();
+  const imageMap = new Map();
   imageFiles.forEach(f => imageMap.set(getBaseName(f.name), f));
-  labelFiles.forEach(f => labelMap.set(getBaseName(f.name), f));
+
+  progressText.textContent = 'Checking label format...';
+  progressBar.style.width = '10%';
+
+  // Check if COCO format (single JSON with images/annotations/categories)
+  let isCoco = false;
+  if (labelFiles.length === 1) {
+    try {
+      const text = await labelFiles[0].text();
+      const json = JSON.parse(text);
+      if (isCOCOFormat(json)) {
+        isCoco = true;
+        cocoData = json;
+      }
+    } catch (e) {}
+  }
 
   progressText.textContent = 'Matching files...';
   progressBar.style.width = '20%';
 
-  if (imageFiles.length !== labelFiles.length) {
-    issues.push({ type: 'warning', text: `File count mismatch: ${imageFiles.length} images vs ${labelFiles.length} labels` });
-  }
+  if (isCoco) {
+    // COCO format: match images from COCO json to uploaded images
+    const cocoImageNames = new Set();
+    cocoData.images.forEach(img => {
+      const baseName = img.file_name.replace(/^.*\//, '').replace(/\.[^/.]+$/, '');
+      cocoImageNames.add(baseName);
+    });
 
-  const allNames = new Set([...imageMap.keys(), ...labelMap.keys()]);
-  for (const name of allNames) {
-    const hasImg = imageMap.has(name), hasLbl = labelMap.has(name);
-    if (hasImg && hasLbl) {
-      matchedPairs.push({ baseName: name, imageFile: imageMap.get(name), labelFile: labelMap.get(name) });
-    } else if (hasImg) {
-      issues.push({ type: 'error', text: `Missing label: ${name}` });
-    } else {
-      issues.push({ type: 'error', text: `Missing image: ${name}` });
+    for (const [baseName, imageFile] of imageMap) {
+      if (cocoImageNames.has(baseName)) {
+        matchedPairs.push({ 
+          baseName, 
+          imageFile, 
+          labelFile: null,
+          isCoco: true
+        });
+      } else {
+        issues.push({ type: 'error', text: `Missing label: ${baseName}` });
+      }
+    }
+
+    // Check for labels without images
+    cocoImageNames.forEach(name => {
+      if (!imageMap.has(name)) {
+        issues.push({ type: 'warning', text: `Missing image: ${name}` });
+      }
+    });
+
+  } else {
+    // LabelMe format: match by filename
+    const labelMap = new Map();
+    labelFiles.forEach(f => labelMap.set(getBaseName(f.name), f));
+
+    if (imageFiles.length !== labelFiles.length) {
+      issues.push({ type: 'warning', text: `File count mismatch: ${imageFiles.length} images vs ${labelFiles.length} labels` });
+    }
+
+    const allNames = new Set([...imageMap.keys(), ...labelMap.keys()]);
+    for (const name of allNames) {
+      const hasImg = imageMap.has(name), hasLbl = labelMap.has(name);
+      if (hasImg && hasLbl) {
+        matchedPairs.push({ baseName: name, imageFile: imageMap.get(name), labelFile: labelMap.get(name), isCoco: false });
+      } else if (hasImg) {
+        issues.push({ type: 'error', text: `Missing label: ${name}` });
+      } else {
+        issues.push({ type: 'error', text: `Missing image: ${name}` });
+      }
     }
   }
 
-  // 시간순 정렬
+  // Sort by time
   matchedPairs.sort((a, b) => extractTime(a.baseName) - extractTime(b.baseName));
 
   progressText.textContent = 'Parsing labels...';
@@ -415,9 +519,13 @@ async function runValidation() {
   for (let i = 0; i < matchedPairs.length; i++) {
     const pair = matchedPairs[i];
     try {
-      const text = await pair.labelFile.text();
-      pair.labelData = JSON.parse(text);
-      pair.labelData.shapes?.forEach(s => {
+      if (pair.isCoco) {
+        pair.labelData = parseCOCOToLabelMe(cocoData, pair.imageFile.name);
+      } else {
+        const text = await pair.labelFile.text();
+        pair.labelData = JSON.parse(text);
+      }
+      pair.labelData?.shapes?.forEach(s => {
         foundClasses.add(s.label);
         if (validClasses.length && !validClasses.includes(s.label)) invalidClasses.add(s.label);
       });
@@ -547,24 +655,70 @@ function updateSelectedCount() {
 
 async function downloadSelectedJson() {
   if (!selectedSet.size) return;
-  const JSZip = await loadJSZip();
-  const zip = new JSZip();
-  for (const idx of selectedSet) {
-    const pair = matchedPairs[idx];
-    if (pair?.labelFile) {
-      const text = await pair.labelFile.text();
-      zip.file(pair.labelFile.name, text);
+  
+  if (cocoData) {
+    // COCO format: download filtered COCO JSON
+    const selectedBaseNames = new Set();
+    for (const idx of selectedSet) {
+      selectedBaseNames.add(matchedPairs[idx].baseName);
     }
+    
+    const filteredImages = cocoData.images.filter(img => {
+      const baseName = img.file_name.replace(/^.*\//, '').replace(/\.[^/.]+$/, '');
+      return selectedBaseNames.has(baseName);
+    });
+    const filteredImageIds = new Set(filteredImages.map(img => img.id));
+    const filteredAnnotations = cocoData.annotations.filter(ann => filteredImageIds.has(ann.image_id));
+    
+    const filteredCoco = {
+      ...cocoData,
+      images: filteredImages,
+      annotations: filteredAnnotations
+    };
+    
+    const blob = new Blob([JSON.stringify(filteredCoco, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, 'selected_annotations.json');
+  } else {
+    // LabelMe format: download as ZIP
+    const JSZip = await loadJSZip();
+    const zip = new JSZip();
+    for (const idx of selectedSet) {
+      const pair = matchedPairs[idx];
+      if (pair?.labelFile) {
+        const text = await pair.labelFile.text();
+        zip.file(pair.labelFile.name, text);
+      }
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    downloadBlob(blob, 'selected_labels.zip');
   }
-  const blob = await zip.generateAsync({ type: 'blob' });
-  downloadBlob(blob, 'selected_labels.zip');
 }
 
 async function downloadCurrentJson() {
   const pair = matchedPairs[modalIndex];
   if (!pair) return;
-  const text = await pair.labelFile.text();
-  downloadBlob(new Blob([text], { type: 'application/json' }), pair.labelFile.name);
+  
+  if (cocoData) {
+    // COCO format: extract single image annotations
+    const imageInfo = cocoData.images.find(img => {
+      const baseName = img.file_name.replace(/^.*\//, '').replace(/\.[^/.]+$/, '');
+      return baseName === pair.baseName;
+    });
+    
+    if (imageInfo) {
+      const annotations = cocoData.annotations.filter(ann => ann.image_id === imageInfo.id);
+      const singleCoco = {
+        ...cocoData,
+        images: [imageInfo],
+        annotations: annotations
+      };
+      const blob = new Blob([JSON.stringify(singleCoco, null, 2)], { type: 'application/json' });
+      downloadBlob(blob, `${pair.baseName}_annotations.json`);
+    }
+  } else {
+    const text = await pair.labelFile.text();
+    downloadBlob(new Blob([text], { type: 'application/json' }), pair.labelFile.name);
+  }
 }
 
 function downloadBlob(blob, name) {
@@ -588,11 +742,14 @@ function loadJSZip() {
 // Modal
 async function openModal(idx) {
   modalIndex = idx;
+  currentHighlight = -1; // reset to show all
   document.getElementById('modal').classList.add('show');
   await renderModal();
 }
 
 function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+let currentHighlight = -1; // -1 = all, 0+ = farmland instance, 'class:name' = entire class
 
 async function renderModal() {
   const pair = matchedPairs[modalIndex];
@@ -621,43 +778,120 @@ async function renderModal() {
   canvas.width = img.width; 
   canvas.height = img.height;
   const ctx = canvas.getContext('2d');
+  const shapes = pair.labelData?.shapes || [];
+  
+  // farmland 인스턴스만 분리
+  const farmlandInstances = shapes.map((s, idx) => ({ ...s, originalIdx: idx })).filter(s => s.label === 'farmland');
 
+  // Draw base
   if (viewMode === 'overlay') {
     ctx.drawImage(img, 0, 0);
-    ctx.globalAlpha = opacity;
   } else {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, img.width, img.height);
   }
 
-  pair.labelData?.shapes?.forEach(s => {
+  // Draw all shapes
+  shapes.forEach((s, idx) => {
     if (s.shape_type === 'polygon' || !s.shape_type) {
-      ctx.fillStyle = classColors[s.label] || '#888';
+      const baseColor = classColors[s.label] || '#888';
+      
+      let isHighlighted = true;
+      
+      if (currentHighlight === -1) {
+        // All selected - show everything
+        isHighlighted = true;
+      } else if (typeof currentHighlight === 'string' && currentHighlight.startsWith('class:')) {
+        // Entire class selected
+        const selectedClass = currentHighlight.replace('class:', '');
+        isHighlighted = s.label === selectedClass;
+      } else if (typeof currentHighlight === 'number') {
+        // Specific farmland instance selected
+        if (s.label === 'farmland') {
+          const farmlandIdx = farmlandInstances.findIndex(f => f.originalIdx === idx);
+          isHighlighted = farmlandIdx === currentHighlight;
+        } else {
+          isHighlighted = false;
+        }
+      }
+      
+      ctx.globalAlpha = isHighlighted ? (viewMode === 'overlay' ? opacity : 1) : 0.15;
+      ctx.fillStyle = baseColor;
       ctx.beginPath();
       s.points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
-      ctx.closePath(); ctx.fill();
+      ctx.closePath(); 
+      ctx.fill();
+
+      // Draw border for highlighted farmland instance
+      if (typeof currentHighlight === 'number' && s.label === 'farmland') {
+        const farmlandIdx = farmlandInstances.findIndex(f => f.originalIdx === idx);
+        if (farmlandIdx === currentHighlight) {
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.strokeStyle = baseColor;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
     }
   });
   ctx.globalAlpha = 1;
   label.textContent = viewMode === 'mask' ? 'Mask' : 'Overlay';
 
-  // Info
-  const shapes = pair.labelData?.shapes || [];
+  // Info - 클래스별 카운트
   const counts = {};
   shapes.forEach(s => counts[s.label] = (counts[s.label] || 0) + 1);
 
   document.getElementById('modalInfo').innerHTML = `
     <div class="modal-info-row"><span class="modal-info-label">Filename</span><span class="modal-info-value">${pair.baseName}</span></div>
     <div class="modal-info-row"><span class="modal-info-label">Size</span><span class="modal-info-value">${img.width} × ${img.height}</span></div>
-    <div class="modal-info-row"><span class="modal-info-label">Objects</span><span class="modal-info-value">${shapes.length}</span></div>
+    <div class="modal-info-row"><span class="modal-info-label">Total</span><span class="modal-info-value">${shapes.length} objects</span></div>
     <div class="modal-info-row"><span class="modal-info-label">Classes</span><span class="modal-info-value">${Object.entries(counts).map(([k,v])=>`${k}(${v})`).join(', ')}</span></div>
+  `;
+
+  // Instance list - All + 다른 클래스(묶음, 클릭 가능) + farmland 인스턴스들
+  const otherClasses = [...new Set(shapes.filter(s => s.label !== 'farmland').map(s => s.label))];
+  
+  const instanceList = document.getElementById('instanceList');
+  instanceList.innerHTML = `
+    <div class="instance-item ${currentHighlight === -1 ? 'active' : ''}" onclick="highlightInstance(-1)">
+      <div class="instance-color" style="background:linear-gradient(135deg,#FF6B6B,#4ECDC4,#45B7D1);"></div>
+      <span class="instance-label">All</span>
+      <span class="instance-pts">${shapes.length} total</span>
+    </div>
+    ${otherClasses.map(cls => `
+      <div class="instance-item ${currentHighlight === 'class:'+cls ? 'active' : ''}" onclick="highlightInstance('class:${cls}')">
+        <div class="instance-color" style="background:${classColors[cls] || '#888'};"></div>
+        <span class="instance-label">${cls}</span>
+        <span class="instance-pts">${counts[cls]} objects</span>
+      </div>
+    `).join('')}
+    ${farmlandInstances.length > 0 ? `
+      <div style="border-top:1px solid var(--border); margin:8px 0; padding-top:8px;">
+        <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px;">Farmland Instances</div>
+      </div>
+      ${farmlandInstances.map((s, idx) => `
+        <div class="instance-item ${currentHighlight === idx ? 'active' : ''}" onclick="highlightInstance(${idx})">
+          <div class="instance-color" style="background:${classColors['farmland'] || '#FF0000'};"></div>
+          <span class="instance-label">farmland #${idx + 1}</span>
+          <span class="instance-pts">${s.points.length} pts</span>
+        </div>
+      `).join('')}
+    ` : ''}
   `;
 
   updateModalSelectBtn();
 }
 
-function modalPrev() { if (modalIndex > 0) { modalIndex--; renderModal(); } }
-function modalNext() { if (modalIndex < matchedPairs.length - 1) { modalIndex++; renderModal(); } }
+async function highlightInstance(idx) {
+  currentHighlight = idx;
+  await renderModal();
+}
+
+function modalPrev() { if (modalIndex > 0) { modalIndex--; currentHighlight = -1; renderModal(); } }
+function modalNext() { if (modalIndex < matchedPairs.length - 1) { modalIndex++; currentHighlight = -1; renderModal(); } }
 
 function toggleModalSelect() {
   toggleSelect(modalIndex);
@@ -698,7 +932,7 @@ document.addEventListener('keydown', e => {
 });
 
 function resetAll() {
-  imageFiles = []; labelFiles = []; matchedPairs = []; selectedSet.clear(); issues = [];
+  imageFiles = []; labelFiles = []; matchedPairs = []; selectedSet.clear(); issues = []; cocoData = null;
   imageDropZone.classList.remove('loaded');
   imageDropZone.querySelector('h3').textContent = 'Image Folder';
   labelDropZone.classList.remove('loaded');
