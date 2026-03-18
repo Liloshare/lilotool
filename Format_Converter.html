@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Format Converter</title>
+<style>
+:root {
+  --bg: #f0f2f8;
+  --card: rgba(255,255,255,0.72);
+  --card2: rgba(255,255,255,0.55);
+  --border: rgba(17,24,39,0.09);
+  --border2: rgba(17,24,39,0.06);
+  --text: #111827;
+  --muted: rgba(17,24,39,0.45);
+  --accent: #6366f1;
+  --accent-light: rgba(99,102,241,0.12);
+  --green: #10b981;
+  --green-light: rgba(16,185,129,0.12);
+  --red: #ef4444;
+  --red-light: rgba(239,68,68,0.10);
+  --yellow: #f59e0b;
+  --shadow: 0 20px 50px rgba(17,24,39,0.10);
+  --radius: 20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(900px 600px at 10% 5%,  rgba(167,139,250,0.22), transparent 60%),
+    radial-gradient(700px 500px at 90% 10%,  rgba(56,189,248,0.18), transparent 55%),
+    radial-gradient(800px 500px at 75% 90%,  rgba(251,113,133,0.16), transparent 55%),
+    radial-gradient(600px 400px at 20% 85%,  rgba(99,102,241,0.12), transparent 55%),
+    var(--bg);
+  min-height: 100vh;
+  padding: 24px;
+  color: var(--text);
+}
+
+.page-header { text-align: center; margin-bottom: 24px; }
+.page-header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+.page-header p  { font-size: 13px; color: var(--muted); }
+
+.layout {
+  display: flex; gap: 16px;
+  max-width: 1200px; margin: 0 auto;
+  align-items: flex-start;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 200px; flex-shrink: 0;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  backdrop-filter: blur(20px); padding: 16px 0 12px;
+}
+.sidebar-title {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted); padding: 0 14px 10px;
+}
+.conv-item {
+  padding: 9px 14px; cursor: pointer;
+  border-left: 3px solid transparent; transition: all 0.15s; margin-bottom: 2px;
+}
+.conv-item:hover { background: rgba(99,102,241,0.06); }
+.conv-item.active { border-left-color: var(--accent); background: var(--accent-light); }
+.conv-item .ci-type { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+.conv-item .ci-name { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; }
+.conv-item .ci-badge {
+  display: inline-block; margin-top: 4px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--accent-light); color: var(--accent);
+}
+.sidebar-sep { height: 1px; background: var(--border); margin: 10px 14px; }
+.add-btn {
+  display: flex; align-items: center; gap: 6px;
+  margin: 4px 14px 0; padding: 7px 10px;
+  background: none; border: 1px dashed rgba(17,24,39,0.18);
+  border-radius: 8px; color: var(--muted); font-size: 11px;
+  cursor: pointer; width: calc(100% - 28px); transition: all 0.15s; font-family: inherit;
+}
+.add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Main */
+.main { flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* Cards */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  backdrop-filter: blur(20px); padding: 22px 24px;
+}
+.card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.card-header h2 { font-size: 18px; font-weight: 700; margin-bottom: 3px; }
+.card-header p  { font-size: 12px; color: var(--muted); line-height: 1.5; max-width: 460px; }
+
+.fmt-badge {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.18);
+  border-radius: 10px; padding: 6px 12px; flex-shrink: 0;
+}
+.fmt-badge .fmt { font-size: 11px; font-weight: 700; color: var(--text); }
+.fmt-badge .arr { color: var(--accent); font-weight: 700; }
+
+/* Drop zone */
+.drop-zone {
+  border: 2px dashed rgba(99,102,241,0.25); border-radius: 14px;
+  padding: 36px 24px; text-align: center; cursor: pointer;
+  transition: all 0.2s; background: rgba(99,102,241,0.03); user-select: none;
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: rgba(99,102,241,0.07); }
+.drop-icon { font-size: 30px; margin-bottom: 10px; opacity: 0.6; }
+.drop-zone h3 { font-size: 14px; font-weight: 600; margin-bottom: 5px; }
+.drop-zone p  { font-size: 12px; color: var(--muted); }
+.browse-link  { color: var(--accent); text-decoration: underline; }
+
+/* File queue */
+.queue-section { margin-top: 14px; }
+.section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.file-list { display: flex; flex-direction: column; gap: 6px; }
+.file-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; background: var(--card2);
+  border: 1px solid var(--border2); border-radius: 10px; transition: border-color 0.15s;
+}
+.file-item.is-done  { border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.04); }
+.file-item.is-error { border-color: rgba(239,68,68,0.3);  background: rgba(239,68,68,0.04); }
+.fi-icon { font-size: 16px; flex-shrink: 0; }
+.fi-info { flex: 1; min-width: 0; }
+.fi-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fi-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.fi-status { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 5px; flex-shrink: 0; }
+.fi-status.s-ready { background: var(--accent-light); color: var(--accent); }
+.fi-status.s-done  { background: var(--green-light);  color: var(--green); }
+.fi-status.s-error { background: var(--red-light);    color: var(--red); }
+.fi-remove { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 4px; border-radius: 4px; flex-shrink: 0; transition: color 0.15s; line-height: 1; }
+.fi-remove:hover { color: var(--red); }
+
+/* Options */
+.options-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  backdrop-filter: blur(20px); padding: 18px 24px;
+}
+.options-title { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+.opt-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border2); }
+.opt-row:last-child { border-bottom: none; padding-bottom: 0; }
+.opt-label { font-size: 13px; font-weight: 500; }
+.opt-hint  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+.toggle input { display: none; }
+.toggle-track { position: absolute; inset: 0; background: rgba(17,24,39,0.15); border-radius: 22px; cursor: pointer; transition: background 0.2s; }
+.toggle input:checked + .toggle-track { background: var(--accent); }
+.toggle-track::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.toggle input:checked + .toggle-track::after { transform: translateX(16px); }
+
+/* Action bar */
+.action-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  backdrop-filter: blur(20px); padding: 16px 24px;
+  display: flex; align-items: center; gap: 10px;
+}
+.btn { display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 13px; font-weight: 600; border: none; border-radius: 10px; padding: 9px 18px; cursor: pointer; transition: all 0.15s; }
+.btn:disabled { opacity: 0.38; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #5254cc; }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid rgba(17,24,39,0.15); }
+.btn-outline:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn-success { background: var(--green-light); color: var(--green); border: 1px solid rgba(16,185,129,0.25); }
+.btn-success:hover:not(:disabled) { background: rgba(16,185,129,0.2); }
+.action-info { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+/* Log */
+.log-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(20px); overflow: hidden; }
+.log-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 18px; border-bottom: 1px solid var(--border2); }
+.log-head span { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.log-clear-btn { background: none; border: none; font-size: 10px; color: var(--muted); cursor: pointer; font-family: inherit; padding: 0; transition: color 0.15s; }
+.log-clear-btn:hover { color: var(--text); }
+.log-body { padding: 10px 18px; max-height: 130px; overflow-y: auto; font-family: 'SF Mono','Fira Code',monospace; font-size: 11px; line-height: 1.85; }
+.log-row { display: flex; gap: 10px; }
+.log-row .ts  { color: var(--muted); flex-shrink: 0; }
+.log-row.info .msg { color: var(--text); }
+.log-row.ok   .msg { color: var(--green); }
+.log-row.err  .msg { color: var(--red); }
+.log-row.warn .msg { color: var(--yellow); }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(17,24,39,0.15); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Format Converter</h1>
+  <p>Annotation format conversion tools for data pipelines</p>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-title">Converters</div>
+    <div class="conv-item active" data-converter="coco-to-cvat" onclick="selectConverter(this)">
+      <div class="ci-type">JSON → JSON</div>
+      <div class="ci-name">COCO → CVAT COCO</div>
+      <div class="ci-badge">ANNOTATION</div>
+    </div>
+    <div class="sidebar-sep"></div>
+    <button class="add-btn" onclick="alert('New converters will be added here.')">＋ Add converter</button>
+  </nav>
+
+  <div class="main" id="main-area"></div>
+</div>
+
+<!-- Single stable file input, lives outside the render loop -->
+<input type="file" id="gfi" multiple style="display:none" onchange="onFileInput(event)" accept="">
+
+<script>
+const CONVERTERS = {
+  'coco-to-cvat': {
+    id: 'coco-to-cvat',
+    name: 'COCO → CVAT COCO',
+    from: 'COCO JSON', to: 'CVAT COCO JSON',
+    desc: 'Remaps image IDs to sequential 1-based integers and updates annotation image_id references accordingly. All other fields are preserved as-is.',
+    ext: 'json',
+    outSuffix: '_cvat',
+    options: {},
+    convert: convertCocoToCvat
+  }
+};
+
+let activeId = 'coco-to-cvat';
+let queue = [];
+let blobs = {};
+let logs  = [];
+
+const uid = () => Math.random().toString(36).slice(2, 8);
+
+function openFilePicker() {
+  const fi = document.getElementById('gfi');
+  fi.value = '';
+  fi.click();
+}
+
+function onFileInput(e) { addFiles(Array.from(e.target.files)); }
+
+function onDragOver(e) {
+  e.preventDefault();
+  document.getElementById('dz').classList.add('drag-over');
+}
+function onDragLeave() { document.getElementById('dz').classList.remove('drag-over'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dz').classList.remove('drag-over');
+  addFiles(Array.from(e.dataTransfer.files));
+}
+
+function addFiles(files) {
+  const conv = CONVERTERS[activeId];
+  files.forEach(f => {
+    if (!f.name.toLowerCase().endsWith('.' + conv.ext)) {
+      addLog('warn', `Skipped "${f.name}" — expected .${conv.ext}`); return;
+    }
+    if (queue.find(q => q.file.name === f.name)) {
+      addLog('warn', `"${f.name}" already in queue`); return;
+    }
+    queue.push({ id: uid(), file: f, status: 'ready', error: null });
+    addLog('info', `Added "${f.name}"`);
+  });
+  render();
+}
+
+function removeFile(id) { queue = queue.filter(q => q.id !== id); delete blobs[id]; render(); }
+function clearQueue()   { queue = []; blobs = {}; addLog('info', 'Queue cleared'); render(); }
+
+async function runConvert() {
+  const conv = CONVERTERS[activeId];
+  const opts = {};
+  Object.keys(conv.options).forEach(k => {
+    const el = document.getElementById('opt-' + k);
+    opts[k] = el ? el.checked : conv.options[k].def;
+  });
+
+  const pending = queue.filter(q => q.status === 'ready');
+  addLog('info', `Converting ${pending.length} file(s)...`);
+
+  for (const item of pending) {
+    try {
+      const text = await readText(item.file);
+      const data = JSON.parse(text);
+      const result = conv.convert(data);
+      item.status = 'done';
+      const outName = item.file.name.replace(/\.json$/i, conv.outSuffix + '.json');
+      blobs[item.id] = { blob: new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' }), filename: outName };
+      addLog('ok', `✓ "${item.file.name}" → "${outName}"`);
+    } catch (err) {
+      item.status = 'error'; item.error = err.message;
+      addLog('err', `✗ "${item.file.name}": ${err.message}`);
+    }
+  }
+  render();
+}
+
+function readText(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = () => rej(new Error('File read failed'));
+    r.readAsText(file);
+  });
+}
+
+function downloadSingle(id) { const b = blobs[id]; if (b) dl(b.blob, b.filename); }
+
+async function downloadAll() {
+  const entries = Object.values(blobs);
+  if (!entries.length) return;
+  if (entries.length === 1) { dl(entries[0].blob, entries[0].filename); return; }
+  if (typeof JSZip === 'undefined') {
+    addLog('warn', 'Loading JSZip...');
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  }
+  const zip = new JSZip();
+  entries.forEach(({ blob, filename }) => zip.file(filename, blob));
+  const z = await zip.generateAsync({ type: 'blob' });
+  dl(z, 'converted_files.zip');
+  addLog('ok', `Downloaded ${entries.length} files as ZIP`);
+}
+
+function dl(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+function addLog(type, msg) {
+  const ts = new Date().toTimeString().slice(0, 8);
+  logs.push({ type, msg, ts });
+  if (logs.length > 300) logs.shift();
+}
+function clearLog() { logs = []; render(); }
+
+function selectConverter(el) {
+  document.querySelectorAll('.conv-item').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  activeId = el.dataset.converter;
+  queue = []; blobs = {};
+  render();
+}
+
+function render() {
+  const conv   = CONVERTERS[activeId];
+  const doneQ  = queue.filter(q => q.status === 'done');
+  const errQ   = queue.filter(q => q.status === 'error');
+
+  const fileRows = queue.map(f => {
+    const sz = f.file.size < 1024 ? f.file.size + ' B'
+             : f.file.size < 1048576 ? (f.file.size/1024).toFixed(1) + ' KB'
+             : (f.file.size/1048576).toFixed(2) + ' MB';
+    const icons = { ready:'📄', done:'✅', error:'❌' };
+    const sCls  = { ready:'s-ready', done:'s-done', error:'s-error' };
+    const sTxt  = { ready:'READY', done:'DONE', error:'ERROR' };
+    const iCls  = { ready:'', done:'is-done', error:'is-error' };
+    return `<div class="file-item ${iCls[f.status]}">
+      <div class="fi-icon">${icons[f.status]}</div>
+      <div class="fi-info">
+        <div class="fi-name">${f.file.name}</div>
+        <div class="fi-meta">${sz}${f.error ? ' · ' + f.error : ''}</div>
+      </div>
+      <span class="fi-status ${sCls[f.status]}">${sTxt[f.status]}</span>
+      <button class="fi-remove" onclick="removeFile('${f.id}')">✕</button>
+    </div>`;
+  }).join('');
+
+  const optRows = Object.entries(conv.options).map(([k, o]) => `
+    <div class="opt-row">
+      <div><div class="opt-label">${o.label}</div><div class="opt-hint">${o.hint}</div></div>
+      <label class="toggle">
+        <input type="checkbox" id="opt-${k}" ${o.def ? 'checked' : ''}>
+        <div class="toggle-track"></div>
+      </label>
+    </div>`).join('');
+
+  const logRows = logs.length === 0
+    ? `<span style="color:var(--muted)">No activity yet.</span>`
+    : logs.map(l => `<div class="log-row ${l.type}"><span class="ts">${l.ts}</span><span class="msg">${l.msg}</span></div>`).join('');
+
+  const infoStr = queue.length
+    ? `${doneQ.length}/${queue.length} converted${errQ.length ? ' · ' + errQ.length + ' error(s)' : ''}`
+    : '';
+
+  const dlBtn = doneQ.length === 1
+    ? `<button class="btn btn-success" onclick="downloadSingle('${doneQ[0].id}')">↓ Download</button>`
+    : doneQ.length > 1
+    ? `<button class="btn btn-success" onclick="downloadAll()">↓ Download All (${doneQ.length})</button>`
+    : '';
+
+  document.getElementById('main-area').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>${conv.name}</h2>
+          <p>${conv.desc}</p>
+        </div>
+        <div class="fmt-badge">
+          <span class="fmt">${conv.from}</span>
+          <span class="arr">→</span>
+          <span class="fmt">${conv.to}</span>
+        </div>
+      </div>
+
+      <div class="drop-zone" id="dz"
+           ondragover="onDragOver(event)"
+           ondragleave="onDragLeave()"
+           ondrop="onDrop(event)"
+           onclick="openFilePicker()">
+        <div class="drop-icon">📂</div>
+        <h3>Drop .${conv.ext} files here</h3>
+        <p>or <span class="browse-link">click to browse individual files</span> — multiple supported</p>
+      </div>
+
+      ${queue.length ? `
+        <div class="queue-section">
+          <div class="section-label">Queue · ${queue.length} file${queue.length > 1 ? 's' : ''}</div>
+          <div class="file-list">${fileRows}</div>
+        </div>` : ''}
+    </div>
+
+    ${optRows ? `<div class="options-card"><div class="options-title">Options</div>${optRows}</div>` : ''}
+
+    <div class="action-card">
+      <button class="btn btn-primary" onclick="runConvert()" ${!queue.length ? 'disabled' : ''}>⚡ Convert</button>
+      ${dlBtn}
+      <button class="btn btn-outline" onclick="clearQueue()" ${!queue.length ? 'disabled' : ''}>Clear</button>
+      <span class="action-info">${infoStr}</span>
+    </div>
+
+    <div class="log-card">
+      <div class="log-head">
+        <span>Log</span>
+        <button class="log-clear-btn" onclick="clearLog()">clear</button>
+      </div>
+      <div class="log-body" id="lb">${logRows}</div>
+    </div>
+  `;
+
+  const lb = document.getElementById('lb');
+  if (lb) lb.scrollTop = lb.scrollHeight;
+}
+
+// ── COCO → CVAT COCO ──────────────────────────────────────────
+function convertCocoToCvat(data) {
+  if (!data.images)      throw new Error('Missing "images" — not a valid COCO file');
+  if (!data.annotations) throw new Error('Missing "annotations"');
+  if (!data.categories)  throw new Error('Missing "categories"');
+
+  // Remove images that have no annotations
+  const annotatedImageIds = new Set(data.annotations.map(ann => ann.image_id));
+  const filteredImages = data.images.filter(img => annotatedImageIds.has(img.id));
+
+  // Build old_id → new sequential id map (1-based)
+  const idMap = {};
+  filteredImages.forEach((img, i) => { idMap[img.id] = i + 1; });
+
+  const out = {
+    licenses:    JSON.parse(JSON.stringify(data.licenses ?? [])),
+    info:        JSON.parse(JSON.stringify(data.info ?? {})),
+    categories:  JSON.parse(JSON.stringify(data.categories)),
+    images:      filteredImages.map((img, i) => ({ ...img, id: i + 1 })),
+    annotations: data.annotations.map(ann => ({
+      ...ann,
+      image_id: idMap[ann.image_id] ?? ann.image_id
+    }))
+  };
+
+  return out;
+}
+
+addLog('info', 'Format Converter ready');
+render();
+</script>
+</body>
+</html>
