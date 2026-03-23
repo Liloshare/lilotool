@@ -190,7 +190,13 @@
   .instance-color{ width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; }
   .instance-label{ font-size: 12px; font-weight: 600; }
   .instance-pts{ font-size: 10px; color: var(--muted); margin-left: auto; }
-  .modal-footer{ padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-footer{ padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+  .issue-type-selector{ display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-right: auto; }
+  .issue-checkbox{ display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.5); border: 1px solid var(--border); }
+  .issue-checkbox:has(input:checked){ background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); }
+  .issue-checkbox input{ cursor: pointer; }
+
+  .thumb-item.last-viewed{ box-shadow: 0 0 0 3px rgba(99,102,241,0.6); }
 
   .hidden{ display: none !important; }
 </style>
@@ -300,6 +306,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <div class="modal-title" id="modalTitle">파일명</div>
+      <div class="modal-position" id="modalPosition" style="font-size:13px;font-weight:700;color:var(--muted);margin-left:12px;">1 / 100</div>
       <div class="modal-nav">
         <button class="toolbar-btn" id="modalPrev" onclick="modalPrev()">◀ Prev</button>
         <button class="toolbar-btn" id="modalNext" onclick="modalNext()">Next ▶</button>
@@ -312,20 +319,29 @@
       <div class="instance-list" id="instanceList"></div>
     </div>
     <div class="modal-footer">
-      <button class="toolbar-btn" id="modalSelectBtn" onclick="toggleModalSelect()">🚩 Mark as Issue</button>
+      <div class="issue-type-selector" id="issueTypeSelector">
+        <span style="font-size:12px;font-weight:700;margin-right:8px;">Issue Type:</span>
+        <label class="issue-checkbox"><input type="checkbox" value="tagging_error" onchange="updateIssueType(this)"> Tagging Error</label>
+        <label class="issue-checkbox"><input type="checkbox" value="inconsistency" onchange="updateIssueType(this)"> Inconsistency</label>
+        <label class="issue-checkbox"><input type="checkbox" value="gap" onchange="updateIssueType(this)"> Gap</label>
+        <label class="issue-checkbox"><input type="checkbox" value="other" onchange="updateIssueType(this)"> Other</label>
+      </div>
+      <button class="toolbar-btn primary" onclick="downloadIssueExcel()">📥 Download Issue Excel</button>
       <button class="toolbar-btn primary" onclick="downloadCurrentJson()">📥 Download This JSON</button>
     </div>
   </div>
 </div>
 
 <script>
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 200;
 let imageFiles = [], labelFiles = [], matchedPairs = [];
 let currentPage = 0, modalIndex = 0;
 let classColors = {}, validClasses = [], issues = [];
-let selectedSet = new Set();
+let selectedSet = new Map(); // idx -> { types: Set of issue types }
+const ISSUE_TYPES = ['tagging_error', 'inconsistency', 'gap', 'other'];
 let renderedCanvases = new Map();
-let cocoData = null; // COCO format data
+let cocoData = null;
+let lastViewedIndex = -1;
 
 const fixedColors = { tractor: '#00FF00', farmland: '#FF0000', road: '#0000FF', edge: '#FF8000' };
 const defaultColors = ['#FF00FF','#00FFFF','#FFFF00','#FF0080','#80FF00','#0080FF','#FF4000','#00FF80','#8000FF','#FF0040','#40FF00','#0040FF'];
@@ -343,19 +359,22 @@ updateClassColors();
 imageDropZone.addEventListener('click', () => imageInput.click());
 labelDropZone.addEventListener('click', () => labelInput.click());
 
-imageInput.addEventListener('change', e => {
-  imageFiles = Array.from(e.target.files).filter(f => /\.(jpg|jpeg|png|bmp|gif)$/i.test(f.name));
+imageInput.addEventListener('change', e => handleImageFiles(e.target.files));
+labelInput.addEventListener('change', e => handleLabelFiles(e.target.files));
+
+function handleImageFiles(files) {
+  imageFiles = Array.from(files).filter(f => /\.(jpg|jpeg|png|bmp|gif)$/i.test(f.name));
   imageDropZone.classList.add('loaded');
   imageDropZone.querySelector('h3').textContent = `${imageFiles.length} images`;
   checkReady();
-});
+}
 
-labelInput.addEventListener('change', e => {
-  labelFiles = Array.from(e.target.files).filter(f => f.name.endsWith('.json'));
+function handleLabelFiles(files) {
+  labelFiles = Array.from(files).filter(f => f.name.endsWith('.json'));
   labelDropZone.classList.add('loaded');
   labelDropZone.querySelector('h3').textContent = `${labelFiles.length} labels`;
   checkReady();
-});
+}
 
 function checkReady() { runBtn.disabled = !(imageFiles.length && labelFiles.length); }
 
@@ -414,11 +433,14 @@ function parseCOCOToLabelMe(cocoJson, imageFileName) {
           points.push([seg[i], seg[i + 1]]);
         }
         if (points.length >= 3) {
+          // Extract farmland_id from attributes if exists
+          const farmlandId = ann.attributes?.farmland_id;
           shapes.push({
             label: categoryMap[ann.category_id] || 'unknown',
             points: points,
             shape_type: 'polygon',
-            annotation_id: ann.id // keep track of original annotation
+            annotation_id: ann.id,
+            farmland_id: farmlandId !== undefined ? farmlandId : null
           });
         }
       });
@@ -590,7 +612,10 @@ async function renderPage() {
     const pair = items[i];
     const globalIdx = start + i;
     const div = document.createElement('div');
-    div.className = 'thumb-item' + (selectedSet.has(globalIdx) ? ' selected' : '');
+    let classes = 'thumb-item';
+    if (selectedSet.has(globalIdx)) classes += ' selected';
+    if (globalIdx === lastViewedIndex) classes += ' last-viewed';
+    div.className = classes;
     div.innerHTML = `<canvas></canvas><div class="thumb-label">${pair.baseName}</div><div class="thumb-check">✓</div>`;
     
     div.addEventListener('click', e => {
@@ -647,10 +672,46 @@ function loadImage(file) {
 function prevPage() { if (currentPage > 0) { currentPage--; renderPage(); } }
 function nextPage() { if (currentPage < Math.ceil(matchedPairs.length / PAGE_SIZE) - 1) { currentPage++; renderPage(); } }
 
-function toggleSelect(idx) { selectedSet.has(idx) ? selectedSet.delete(idx) : selectedSet.add(idx); }
+function toggleSelect(idx) { 
+  if (selectedSet.has(idx)) {
+    selectedSet.delete(idx);
+  } else {
+    selectedSet.set(idx, { types: new Set() });
+  }
+}
+
+function updateIssueType(checkbox) {
+  const issueType = checkbox.value;
+  if (!selectedSet.has(modalIndex)) {
+    selectedSet.set(modalIndex, { types: new Set() });
+  }
+  const data = selectedSet.get(modalIndex);
+  if (checkbox.checked) {
+    data.types.add(issueType);
+  } else {
+    data.types.delete(issueType);
+  }
+  // If no types selected, remove from selectedSet
+  if (data.types.size === 0) {
+    selectedSet.delete(modalIndex);
+  }
+  updateSelectedCount();
+  // Update thumbnail if visible
+  const start = currentPage * PAGE_SIZE;
+  const localIdx = modalIndex - start;
+  if (localIdx >= 0 && localIdx < PAGE_SIZE) {
+    const items = document.querySelectorAll('.thumb-item');
+    if (items[localIdx]) items[localIdx].classList.toggle('selected', selectedSet.has(modalIndex));
+  }
+}
+
 function selectAll() {
   const start = currentPage * PAGE_SIZE;
-  for (let i = 0; i < PAGE_SIZE && start + i < matchedPairs.length; i++) selectedSet.add(start + i);
+  for (let i = 0; i < PAGE_SIZE && start + i < matchedPairs.length; i++) {
+    if (!selectedSet.has(start + i)) {
+      selectedSet.set(start + i, { types: new Set() });
+    }
+  }
   renderPage();
 }
 function deselectAll() { selectedSet.clear(); renderPage(); }
@@ -745,6 +806,59 @@ function loadJSZip() {
   });
 }
 
+function loadXLSX() {
+  return new Promise((resolve) => {
+    if (window.XLSX) return resolve(window.XLSX);
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => resolve(window.XLSX);
+    document.head.appendChild(s);
+  });
+}
+
+async function downloadIssueExcel() {
+  if (selectedSet.size === 0) {
+    alert('No issues marked.');
+    return;
+  }
+  
+  const XLSX = await loadXLSX();
+  
+  const rows = [['No', 'Filename', 'Tagging Error', 'Inconsistency', 'Gap', 'Other', 'Notes']];
+  
+  let no = 1;
+  for (const [idx, data] of selectedSet) {
+    const pair = matchedPairs[idx];
+    if (!pair) continue;
+    rows.push([
+      no++,
+      pair.baseName,
+      data.types.has('tagging_error') ? 'O' : '',
+      data.types.has('inconsistency') ? 'O' : '',
+      data.types.has('gap') ? 'O' : '',
+      data.types.has('other') ? 'O' : '',
+      ''
+    ]);
+  }
+  
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Issues');
+  
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 5 },   // No
+    { wch: 50 },  // Filename
+    { wch: 15 },  // Tagging Error
+    { wch: 15 },  // Inconsistency
+    { wch: 10 },  // Gap
+    { wch: 10 },  // Other
+    { wch: 30 }   // Notes
+  ];
+  
+  XLSX.writeFile(wb, 'issue_report.xlsx');
+}
+
 // Modal
 async function openModal(idx) {
   modalIndex = idx;
@@ -753,15 +867,32 @@ async function openModal(idx) {
   await renderModal();
 }
 
-function closeModal() { document.getElementById('modal').classList.remove('show'); }
+function closeModal() { 
+  lastViewedIndex = modalIndex;
+  document.getElementById('modal').classList.remove('show'); 
+  // Navigate to the page containing the last viewed image
+  const targetPage = Math.floor(lastViewedIndex / PAGE_SIZE);
+  if (targetPage !== currentPage) {
+    currentPage = targetPage;
+  }
+  renderPage();
+}
 
-let currentHighlight = -1; // -1 = all, 0+ = farmland instance, 'class:name' = entire class
+let currentHighlight = -1; // -1 = all, 'class:name' = entire class, 'farmland:id' = farmland group
 
 async function renderModal() {
   const pair = matchedPairs[modalIndex];
   document.getElementById('modalTitle').textContent = pair.baseName;
   document.getElementById('modalPrev').disabled = modalIndex === 0;
   document.getElementById('modalNext').disabled = modalIndex === matchedPairs.length - 1;
+  document.getElementById('modalPosition').textContent = `${modalIndex + 1} / ${matchedPairs.length}`;
+
+  // Update issue checkboxes
+  const issueData = selectedSet.get(modalIndex);
+  const checkboxes = document.querySelectorAll('#issueTypeSelector input[type="checkbox"]');
+  checkboxes.forEach(cb => {
+    cb.checked = issueData?.types?.has(cb.value) || false;
+  });
 
   const wrap = document.getElementById('modalCanvasWrap');
   const viewMode = document.getElementById('viewMode').value;
@@ -786,8 +917,20 @@ async function renderModal() {
   const ctx = canvas.getContext('2d');
   const shapes = pair.labelData?.shapes || [];
   
-  // farmland 인스턴스만 분리
-  const farmlandInstances = shapes.map((s, idx) => ({ ...s, originalIdx: idx })).filter(s => s.label === 'farmland');
+  // farmland를 farmland_id로 그룹핑
+  const farmlandGroups = {};
+  shapes.forEach((s, idx) => {
+    if (s.label === 'farmland') {
+      const fid = s.farmland_id !== null ? s.farmland_id : `no_id_${idx}`;
+      if (!farmlandGroups[fid]) farmlandGroups[fid] = [];
+      farmlandGroups[fid].push({ ...s, originalIdx: idx });
+    }
+  });
+  const farmlandGroupIds = Object.keys(farmlandGroups).sort((a, b) => {
+    const aNum = parseFloat(a), bNum = parseFloat(b);
+    if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+    return String(a).localeCompare(String(b));
+  });
 
   // Draw base
   if (viewMode === 'overlay') {
@@ -805,17 +948,15 @@ async function renderModal() {
       let isHighlighted = true;
       
       if (currentHighlight === -1) {
-        // All selected - show everything
         isHighlighted = true;
       } else if (typeof currentHighlight === 'string' && currentHighlight.startsWith('class:')) {
-        // Entire class selected
         const selectedClass = currentHighlight.replace('class:', '');
         isHighlighted = s.label === selectedClass;
-      } else if (typeof currentHighlight === 'number') {
-        // Specific farmland instance selected
+      } else if (typeof currentHighlight === 'string' && currentHighlight.startsWith('farmland:')) {
+        const selectedFid = currentHighlight.replace('farmland:', '');
         if (s.label === 'farmland') {
-          const farmlandIdx = farmlandInstances.findIndex(f => f.originalIdx === idx);
-          isHighlighted = farmlandIdx === currentHighlight;
+          const fid = s.farmland_id !== null ? String(s.farmland_id) : `no_id_${idx}`;
+          isHighlighted = fid === selectedFid;
         } else {
           isHighlighted = false;
         }
@@ -828,17 +969,20 @@ async function renderModal() {
       ctx.closePath(); 
       ctx.fill();
 
-      // Draw border for highlighted farmland instance
-      if (typeof currentHighlight === 'number' && s.label === 'farmland') {
-        const farmlandIdx = farmlandInstances.findIndex(f => f.originalIdx === idx);
-        if (farmlandIdx === currentHighlight) {
-          ctx.globalAlpha = 1;
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 3;
-          ctx.stroke();
-          ctx.strokeStyle = baseColor;
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
+      // Draw border for highlighted farmland group
+      if (typeof currentHighlight === 'string' && currentHighlight.startsWith('farmland:')) {
+        const selectedFid = currentHighlight.replace('farmland:', '');
+        if (s.label === 'farmland') {
+          const fid = s.farmland_id !== null ? String(s.farmland_id) : `no_id_${idx}`;
+          if (fid === selectedFid) {
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.strokeStyle = baseColor;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
         }
       }
     }
@@ -857,7 +1001,7 @@ async function renderModal() {
     <div class="modal-info-row"><span class="modal-info-label">Classes</span><span class="modal-info-value">${Object.entries(counts).map(([k,v])=>`${k}(${v})`).join(', ')}</span></div>
   `;
 
-  // Instance list - All + 다른 클래스(묶음, 클릭 가능) + farmland 인스턴스들
+  // Instance list - All + 다른 클래스(묶음) + farmland groups by farmland_id
   const otherClasses = [...new Set(shapes.filter(s => s.label !== 'farmland').map(s => s.label))];
   
   const instanceList = document.getElementById('instanceList');
@@ -874,21 +1018,23 @@ async function renderModal() {
         <span class="instance-pts">${counts[cls]} objects</span>
       </div>
     `).join('')}
-    ${farmlandInstances.length > 0 ? `
+    ${farmlandGroupIds.length > 0 ? `
       <div style="border-top:1px solid var(--border); margin:8px 0; padding-top:8px;">
-        <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px;">Farmland Instances</div>
+        <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px;">Farmland (by ID)</div>
       </div>
-      ${farmlandInstances.map((s, idx) => `
-        <div class="instance-item ${currentHighlight === idx ? 'active' : ''}" onclick="highlightInstance(${idx})">
-          <div class="instance-color" style="background:${classColors['farmland'] || '#FF0000'};"></div>
-          <span class="instance-label">farmland #${idx + 1}</span>
-          <span class="instance-pts">${s.points.length} pts</span>
-        </div>
-      `).join('')}
+      ${farmlandGroupIds.map(fid => {
+        const group = farmlandGroups[fid];
+        const displayId = String(fid).startsWith('no_id_') ? 'no ID' : `ID ${fid}`;
+        return `
+          <div class="instance-item ${currentHighlight === 'farmland:'+fid ? 'active' : ''}" onclick="highlightInstance('farmland:${fid}')">
+            <div class="instance-color" style="background:${classColors['farmland'] || '#FF0000'};"></div>
+            <span class="instance-label">farmland ${displayId}</span>
+            <span class="instance-pts">${group.length} poly</span>
+          </div>
+        `;
+      }).join('')}
     ` : ''}
   `;
-
-  updateModalSelectBtn();
 }
 
 async function highlightInstance(idx) {
@@ -898,25 +1044,6 @@ async function highlightInstance(idx) {
 
 function modalPrev() { if (modalIndex > 0) { modalIndex--; currentHighlight = -1; renderModal(); } }
 function modalNext() { if (modalIndex < matchedPairs.length - 1) { modalIndex++; currentHighlight = -1; renderModal(); } }
-
-function toggleModalSelect() {
-  toggleSelect(modalIndex);
-  updateModalSelectBtn();
-  updateSelectedCount();
-  // Update thumb if visible
-  const start = currentPage * PAGE_SIZE;
-  const localIdx = modalIndex - start;
-  if (localIdx >= 0 && localIdx < PAGE_SIZE) {
-    const items = document.querySelectorAll('.thumb-item');
-    if (items[localIdx]) items[localIdx].classList.toggle('selected', selectedSet.has(modalIndex));
-  }
-}
-
-function updateModalSelectBtn() {
-  const btn = document.getElementById('modalSelectBtn');
-  btn.textContent = selectedSet.has(modalIndex) ? '✓ Selected' : '🚩 Mark as Issue';
-  btn.classList.toggle('danger', selectedSet.has(modalIndex));
-}
 
 // Option change
 document.getElementById('viewMode').addEventListener('change', () => { if (matchedPairs.length) renderPage(); });
@@ -930,7 +1057,6 @@ document.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') modalPrev();
     else if (e.key === 'ArrowRight') modalNext();
     else if (e.key === 'Escape') closeModal();
-    else if (e.key === ' ') { e.preventDefault(); toggleModalSelect(); }
   } else if (matchedPairs.length > 0) {
     if (e.key === 'ArrowLeft') prevPage();
     else if (e.key === 'ArrowRight') nextPage();
@@ -938,7 +1064,7 @@ document.addEventListener('keydown', e => {
 });
 
 function resetAll() {
-  imageFiles = []; labelFiles = []; matchedPairs = []; selectedSet.clear(); issues = []; cocoData = null;
+  imageFiles = []; labelFiles = []; matchedPairs = []; selectedSet.clear(); issues = []; cocoData = null; lastViewedIndex = -1;
   imageDropZone.classList.remove('loaded');
   imageDropZone.querySelector('h3').textContent = 'Image Folder';
   labelDropZone.classList.remove('loaded');
