@@ -538,8 +538,8 @@ async function runValidation() {
     }
   }
 
-  // Sort by time
-  matchedPairs.sort((a, b) => extractTime(a.baseName) - extractTime(b.baseName));
+  // Sort by filename (natural sort for proper numeric ordering)
+  matchedPairs.sort((a, b) => a.baseName.localeCompare(b.baseName, undefined, { numeric: true, sensitivity: 'base' }));
 
   progressText.textContent = 'Parsing labels...';
   const foundClasses = new Set(), invalidClasses = new Set();
