@@ -196,7 +196,16 @@
   .issue-checkbox:has(input:checked){ background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); }
   .issue-checkbox input{ cursor: pointer; }
 
-  .thumb-item.last-viewed{ box-shadow: 0 0 0 3px rgba(99,102,241,0.6); }
+  .thumb-item.last-viewed{ box-shadow: 0 0 0 4px rgba(99,102,241,0.8); animation: pulse-highlight 1.5s ease-in-out 3; }
+  @keyframes pulse-highlight {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(99,102,241,0.8); }
+    50% { box-shadow: 0 0 0 8px rgba(99,102,241,0.4); }
+  }
+  .thumb-item.search-result{ box-shadow: 0 0 0 4px rgba(34,197,94,0.8); animation: pulse-search 1.5s ease-in-out 3; }
+  @keyframes pulse-search {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(34,197,94,0.8); }
+    50% { box-shadow: 0 0 0 8px rgba(34,197,94,0.4); }
+  }
 
   .hidden{ display: none !important; }
 </style>
@@ -287,6 +296,9 @@
         <button class="toolbar-btn" id="prevPageBtn" onclick="prevPage()">◀ Prev</button>
         <span class="page-info" id="pageInfo">1 / 1</span>
         <button class="toolbar-btn" id="nextPageBtn" onclick="nextPage()">Next ▶</button>
+        <input type="text" id="searchInput" placeholder="Search filename..." onkeydown="if(event.key==='Enter')searchFile()" style="margin-left:12px;padding:8px 12px;border:1px solid rgba(17,24,39,0.10);border-radius:10px;font-size:12px;width:200px;">
+        <button class="toolbar-btn" onclick="searchFile()">🔍 Search</button>
+        <button class="toolbar-btn" onclick="clearSearch()">Clear</button>
       </div>
       <div class="toolbar-right">
         <span id="selectedCount" style="font-size:12px;color:var(--muted);">Selected: 0</span>
@@ -298,6 +310,18 @@
 
     <!-- Thumbnail Grid -->
     <div class="thumb-grid" id="thumbGrid"></div>
+
+    <!-- Bottom Toolbar -->
+    <div class="toolbar" style="margin-top:16px;">
+      <div class="toolbar-left">
+        <button class="toolbar-btn" id="prevPageBtn2" onclick="prevPage()">◀ Prev</button>
+        <span class="page-info" id="pageInfo2">1 / 1</span>
+        <button class="toolbar-btn" id="nextPageBtn2" onclick="nextPage()">Next ▶</button>
+      </div>
+      <div class="toolbar-right">
+        <span id="totalCount" style="font-size:12px;color:var(--muted);">Total: 0 images</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -324,6 +348,10 @@
         <label class="issue-checkbox"><input type="checkbox" value="tagging_error" onchange="updateIssueType(this)"> Tagging Error</label>
         <label class="issue-checkbox"><input type="checkbox" value="inconsistency" onchange="updateIssueType(this)"> Inconsistency</label>
         <label class="issue-checkbox"><input type="checkbox" value="gap" onchange="updateIssueType(this)"> Gap</label>
+        <label class="issue-checkbox"><input type="checkbox" value="duplicated" onchange="updateIssueType(this)"> Duplicated</label>
+        <label class="issue-checkbox"><input type="checkbox" value="edge_size" onchange="updateIssueType(this)"> Edge Size</label>
+        <label class="issue-checkbox"><input type="checkbox" value="edge_line" onchange="updateIssueType(this)"> Edge Line</label>
+        <label class="issue-checkbox"><input type="checkbox" value="straight_line" onchange="updateIssueType(this)"> Straight Line</label>
         <label class="issue-checkbox"><input type="checkbox" value="other" onchange="updateIssueType(this)"> Other</label>
       </div>
       <button class="toolbar-btn primary" onclick="downloadIssueExcel()">📥 Download Issue Excel</button>
@@ -338,10 +366,11 @@ let imageFiles = [], labelFiles = [], matchedPairs = [];
 let currentPage = 0, modalIndex = 0;
 let classColors = {}, validClasses = [], issues = [];
 let selectedSet = new Map(); // idx -> { types: Set of issue types }
-const ISSUE_TYPES = ['tagging_error', 'inconsistency', 'gap', 'other'];
+const ISSUE_TYPES = ['tagging_error', 'inconsistency', 'gap', 'duplicated', 'edge_size', 'edge_line', 'straight_line', 'other'];
 let renderedCanvases = new Map();
 let cocoData = null;
 let lastViewedIndex = -1;
+let searchResultIndex = -1;
 
 const fixedColors = { tractor: '#00FF00', farmland: '#FF0000', road: '#0000FF', edge: '#FF8000' };
 const defaultColors = ['#FF00FF','#00FFFF','#FFFF00','#FF0080','#80FF00','#0080FF','#FF4000','#00FF80','#8000FF','#FF0040','#40FF00','#0040FF'];
@@ -597,8 +626,12 @@ function updateLegend() {
 async function renderPage() {
   const totalPages = Math.ceil(matchedPairs.length / PAGE_SIZE);
   document.getElementById('pageInfo').textContent = `${currentPage + 1} / ${totalPages}`;
+  document.getElementById('pageInfo2').textContent = `${currentPage + 1} / ${totalPages}`;
   document.getElementById('prevPageBtn').disabled = currentPage === 0;
   document.getElementById('nextPageBtn').disabled = currentPage >= totalPages - 1;
+  document.getElementById('prevPageBtn2').disabled = currentPage === 0;
+  document.getElementById('nextPageBtn2').disabled = currentPage >= totalPages - 1;
+  document.getElementById('totalCount').textContent = `Total: ${matchedPairs.length} images`;
 
   const grid = document.getElementById('thumbGrid');
   grid.innerHTML = '';
@@ -615,6 +648,7 @@ async function renderPage() {
     let classes = 'thumb-item';
     if (selectedSet.has(globalIdx)) classes += ' selected';
     if (globalIdx === lastViewedIndex) classes += ' last-viewed';
+    if (globalIdx === searchResultIndex) classes += ' search-result';
     div.className = classes;
     div.innerHTML = `<canvas></canvas><div class="thumb-label">${pair.baseName}</div><div class="thumb-check">✓</div>`;
     
@@ -671,6 +705,40 @@ function loadImage(file) {
 
 function prevPage() { if (currentPage > 0) { currentPage--; renderPage(); } }
 function nextPage() { if (currentPage < Math.ceil(matchedPairs.length / PAGE_SIZE) - 1) { currentPage++; renderPage(); } }
+
+async function searchFile() {
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!query) {
+    alert('Please enter a search term');
+    return;
+  }
+  
+  if (matchedPairs.length === 0) {
+    alert('No data loaded. Please run validation first.');
+    return;
+  }
+  
+  const idx = matchedPairs.findIndex(p => p.baseName.toLowerCase().includes(query));
+  if (idx !== -1) {
+    currentPage = Math.floor(idx / PAGE_SIZE);
+    searchResultIndex = idx;
+    await renderPage();
+    // Scroll to the item
+    const items = document.querySelectorAll('.thumb-item');
+    const localIdx = idx - (currentPage * PAGE_SIZE);
+    if (items[localIdx]) {
+      items[localIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  } else {
+    alert('File not found: ' + query);
+  }
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  searchResultIndex = -1;
+  renderPage();
+}
 
 function toggleSelect(idx) { 
   if (selectedSet.has(idx)) {
@@ -824,7 +892,7 @@ async function downloadIssueExcel() {
   
   const XLSX = await loadXLSX();
   
-  const rows = [['No', 'Filename', 'Tagging Error', 'Inconsistency', 'Gap', 'Other', 'Notes']];
+  const rows = [['No', 'Filename', 'Tagging Error', 'Inconsistency', 'Gap', 'Duplicated', 'Edge Size', 'Edge Line', 'Straight Line', 'Other', 'Notes']];
   
   let no = 1;
   for (const [idx, data] of selectedSet) {
@@ -836,6 +904,10 @@ async function downloadIssueExcel() {
       data.types.has('tagging_error') ? 'O' : '',
       data.types.has('inconsistency') ? 'O' : '',
       data.types.has('gap') ? 'O' : '',
+      data.types.has('duplicated') ? 'O' : '',
+      data.types.has('edge_size') ? 'O' : '',
+      data.types.has('edge_line') ? 'O' : '',
+      data.types.has('straight_line') ? 'O' : '',
       data.types.has('other') ? 'O' : '',
       ''
     ]);
@@ -849,10 +921,14 @@ async function downloadIssueExcel() {
   ws['!cols'] = [
     { wch: 5 },   // No
     { wch: 50 },  // Filename
-    { wch: 15 },  // Tagging Error
-    { wch: 15 },  // Inconsistency
-    { wch: 10 },  // Gap
-    { wch: 10 },  // Other
+    { wch: 12 },  // Tagging Error
+    { wch: 12 },  // Inconsistency
+    { wch: 8 },   // Gap
+    { wch: 10 },  // Duplicated
+    { wch: 10 },  // Edge Size
+    { wch: 10 },  // Edge Line
+    { wch: 12 },  // Straight Line
+    { wch: 8 },   // Other
     { wch: 30 }   // Notes
   ];
   
