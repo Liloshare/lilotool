@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Copy Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #f0f2f8;
+  --card: rgba(255,255,255,0.72);
+  --card2: rgba(255,255,255,0.55);
+  --border: rgba(17,24,39,0.09);
+  --text: #111827;
+  --muted: rgba(17,24,39,0.45);
+  --accent: #6366f1;
+  --accent-light: rgba(99,102,241,0.12);
+  --green: #10b981;
+  --green-light: rgba(16,185,129,0.12);
+  --red: #ef4444;
+  --red-light: rgba(239,68,68,0.10);
+  --yellow: #f59e0b;
+  --yellow-light: rgba(245,158,11,0.10);
+  --shadow: 0 20px 50px rgba(17,24,39,0.10);
+  --radius: 20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(900px 600px at 10% 5%,  rgba(167,139,250,0.22), transparent 60%),
+    radial-gradient(700px 500px at 90% 10%,  rgba(56,189,248,0.18), transparent 55%),
+    radial-gradient(800px 500px at 75% 90%,  rgba(251,113,133,0.16), transparent 55%),
+    radial-gradient(600px 400px at 20% 85%,  rgba(99,102,241,0.12), transparent 55%),
+    var(--bg);
+  min-height: 100vh;
+  padding: 28px 24px;
+  color: var(--text);
+}
+
+h1 {
+  text-align: center;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+
+.wrapper {
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Card */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 22px 24px;
+}
+
+.card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+/* Step badges */
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.step-badge {
+  width: 26px; height: 26px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.step-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Folder row */
+.folder-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.folder-row:last-child { margin-bottom: 0; }
+.folder-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.folder-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  width: 100px;
+  flex-shrink: 0;
+}
+.folder-path {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text);
+  background: rgba(17,24,39,0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  font-family: monospace;
+}
+.folder-path.empty { color: var(--muted); font-style: italic; font-family: inherit; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover { background: #4f52d9; }
+.btn-secondary {
+  background: rgba(17,24,39,0.06);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: rgba(17,24,39,0.10); }
+.btn-green {
+  background: var(--green);
+  color: #fff;
+}
+.btn-green:hover { background: #0da672; }
+.btn-lg {
+  padding: 12px 28px;
+  font-size: 14px;
+  border-radius: 14px;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* File name input area */
+.filenames-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 600px) { .filenames-grid { grid-template-columns: 1fr; } }
+
+.filenames-area {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(17,24,39,0.03);
+  font-size: 12px;
+  font-family: monospace;
+  resize: vertical;
+  color: var(--text);
+  line-height: 1.6;
+}
+.filenames-area:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.or-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  gap: 8px;
+  padding-top: 8px;
+}
+.or-divider::before, .or-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--border);
+}
+
+.excel-drop {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .15s;
+  font-size: 12px;
+  color: var(--muted);
+}
+.excel-drop:hover, .excel-drop.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
+}
+.excel-drop.has-file {
+  border-color: var(--green);
+  background: var(--green-light);
+  color: var(--green);
+}
+.excel-drop .drop-icon { font-size: 22px; margin-bottom: 4px; }
+
+/* Tag list */
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  min-height: 28px;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--accent-light);
+  color: var(--accent);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: monospace;
+}
+.tag .remove {
+  cursor: pointer;
+  opacity: 0.6;
+  font-style: normal;
+}
+.tag .remove:hover { opacity: 1; }
+
+/* Count badge */
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--accent-light);
+  color: var(--accent);
+  margin-left: 8px;
+}
+
+/* Progress */
+.progress-wrap {
+  margin-top: 12px;
+}
+.progress-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+.progress-bar {
+  height: 6px;
+  background: rgba(17,24,39,0.07);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width .2s ease;
+}
+
+/* Log */
+.log {
+  margin-top: 12px;
+  background: rgba(17,24,39,0.04);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 11px;
+  font-family: monospace;
+  max-height: 180px;
+  overflow-y: auto;
+  line-height: 1.7;
+}
+.log-line { margin-bottom: 1px; }
+.log-ok { color: var(--green); }
+.log-warn { color: var(--yellow); }
+.log-err { color: var(--red); }
+.log-info { color: var(--accent); }
+
+/* Summary stats */
+.stats-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.stat-pill.green { background: var(--green-light); color: var(--green); }
+.stat-pill.red   { background: var(--red-light);   color: var(--red); }
+.stat-pill.yellow{ background: var(--yellow-light); color: var(--yellow); }
+.stat-pill.blue  { background: var(--accent-light); color: var(--accent); }
+
+/* Action row */
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Range input */
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.range-input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(17,24,39,0.03);
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text);
+  min-width: 0;
+}
+.range-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+.range-sep {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.range-preview {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: monospace;
+  min-height: 16px;
+}
+.range-preview.ok  { color: var(--green); }
+.range-preview.err { color: var(--red); }
+
+/* Hidden inputs */
+input[type=file] { display: none; }
+</style>
+</head>
+<body>
+
+<h1>📂 File Copy Tool</h1>
+<p class="subtitle">Copy matched images & filter JSON annotations by filename list</p>
+
+<div class="wrapper">
+
+  <!-- STEP 1: Select folders -->
+  <div class="card">
+    <div class="step-header">
+      <div class="step-badge">1</div>
+      <div class="step-label">Select Source Folders</div>
+    </div>
+
+    <div class="folder-row">
+      <span class="folder-icon">🖼️</span>
+      <span class="folder-label">Image Folder</span>
+      <div class="folder-path empty" id="img-folder-path">No folder selected</div>
+      <button class="btn btn-secondary" onclick="document.getElementById('img-folder-input').click()">Browse</button>
+    </div>
+
+    <div class="folder-row">
+      <span class="folder-icon">📋</span>
+      <span class="folder-label">JSON Folder</span>
+      <div class="folder-path empty" id="json-folder-path">No folder selected</div>
+      <button class="btn btn-secondary" onclick="document.getElementById('json-folder-input').click()">Browse</button>
+    </div>
+
+    <div class="folder-row" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <span class="folder-icon">📁</span>
+      <span class="folder-label" style="color:var(--accent);font-weight:700">Output Folder</span>
+      <div class="folder-path empty" id="out-folder-path">No folder selected</div>
+      <button class="btn btn-primary" onclick="selectOutputFolder()">Select</button>
+    </div>
+
+    <!-- hidden folder inputs -->
+    <input type="file" id="img-folder-input" webkitdirectory multiple>
+    <input type="file" id="json-folder-input" webkitdirectory multiple>
+  </div>
+
+  <!-- STEP 2: File names -->
+  <div class="card">
+    <div class="step-header">
+      <div class="step-badge">2</div>
+      <div class="step-label">Enter Issue File Names</div>
+    </div>
+
+    <div class="filenames-grid">
+      <!-- Text input -->
+      <div>
+        <div class="card-title" style="margin-bottom:6px">Type or Paste Names</div>
+        <textarea class="filenames-area" id="names-textarea"
+          placeholder="One per line. Range: use ~ between two names&#10;&#10;image001&#10;img_0042.jpg&#10;CD04_front_0000000140 ~ CD04_front_0000000176"></textarea>
+        <div class="range-preview" id="range-preview" style="margin-top:6px"></div>
+      </div>
+
+      <!-- Excel drop -->
+      <div>
+        <div class="card-title" style="margin-bottom:6px">Or Load Excel (Column B)</div>
+        <div class="excel-drop" id="excel-drop"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="onExcelDrop(event)"
+          onclick="document.getElementById('excel-input').click()">
+          <div class="drop-icon">📊</div>
+          <div id="excel-drop-label">Drop .xlsx / .xls here<br>or click to browse</div>
+        </div>
+        <input type="file" id="excel-input" accept=".xlsx,.xls,.csv">
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Run -->
+  <div class="card">
+    <div class="step-header">
+      <div class="step-badge">3</div>
+      <div class="step-label">Copy & Export</div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn-primary btn-lg" id="run-btn" onclick="runCopy()">
+        ⚡ Run Copy
+      </button>
+      <button class="btn btn-secondary" onclick="clearAll()">↺ Reset</button>
+    </div>
+
+    <div class="progress-wrap" id="progress-wrap" style="display:none">
+      <div class="progress-label">
+        <span id="progress-text">Processing…</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+
+    <div class="stats-row" id="stats-row" style="display:none">
+      <div class="stat-pill green" id="stat-img">🖼 0 images copied</div>
+      <div class="stat-pill blue"  id="stat-json">📋 0 JSON annotations</div>
+      <div class="stat-pill red"   id="stat-miss">⚠ 0 not found</div>
+    </div>
+
+    <div class="log" id="log" style="display:none"></div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+let imgFiles  = {};  // stem → File
+let jsonFiles = {};  // stem → File
+let excelNames = new Set();  // stems loaded from Excel
+let outDirHandle = null;
+
+// ── Folder loading (source - read via input) ───────────
+document.getElementById('img-folder-input').addEventListener('change', e => {
+  imgFiles = {};
+  for (const f of e.target.files) imgFiles[stem(f.name)] = f;
+  const el = document.getElementById('img-folder-path');
+  el.textContent = e.target.files[0]?.webkitRelativePath?.split('/')[0] || '(selected)';
+  el.classList.remove('empty');
+  log(`Loaded ${Object.keys(imgFiles).length} image files`, 'info');
+});
+
+document.getElementById('json-folder-input').addEventListener('change', e => {
+  jsonFiles = {};
+  for (const f of e.target.files) if (f.name.endsWith('.json')) jsonFiles[stem(f.name)] = f;
+  const el = document.getElementById('json-folder-path');
+  el.textContent = e.target.files[0]?.webkitRelativePath?.split('/')[0] || '(selected)';
+  el.classList.remove('empty');
+  log(`Loaded ${Object.keys(jsonFiles).length} JSON files`, 'info');
+});
+
+// ── Output folder (File System Access API) ─────────────
+async function selectOutputFolder() {
+  try {
+    outDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const el = document.getElementById('out-folder-path');
+    el.textContent = outDirHandle.name;
+    el.classList.remove('empty');
+    log(`Output folder set: ${outDirHandle.name}`, 'info');
+  } catch (e) {
+    if (e.name !== 'AbortError') alert('Failed to select folder: ' + e.message);
+  }
+}
+
+// ── Excel ──────────────────────────────────────────────
+document.getElementById('excel-input').addEventListener('change', e => {
+  const f = e.target.files[0]; if (f) readExcel(f);
+});
+function onExcelDrop(e) {
+  e.preventDefault();
+  document.getElementById('excel-drop').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0]; if (f) readExcel(f);
+}
+function readExcel(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      const names = rows.map(r => r[1]).filter(v => v !== undefined && v !== null && String(v).trim() !== '');
+      names.forEach(n => excelNames.add(stem(String(n).trim())));
+      document.getElementById('excel-drop').classList.add('has-file');
+      document.getElementById('excel-drop-label').textContent = `✓ ${file.name}  (${names.length} names)`;
+      log(`Excel loaded: ${names.length} names from column B`, 'info');
+    } catch (err) { alert('Failed to read Excel: ' + err.message); }
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ── Utilities ──────────────────────────────────────────
+function stem(filename) { return filename.replace(/\.[^/.]+$/, ''); }
+
+function naturalSort(a, b) { return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }); }
+function allSortedStems() {
+  const keys = Object.keys(imgFiles).length ? Object.keys(imgFiles) : Object.keys(jsonFiles);
+  return [...keys].sort(naturalSort);
+}
+
+function log(msg, type = '') {
+  const el = document.getElementById('log');
+  el.style.display = 'block';
+  const line = document.createElement('div');
+  line.className = 'log-line' + (type ? ' log-' + type : '');
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function setProgress(pct, text) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = Math.round(pct) + '%';
+  if (text) document.getElementById('progress-text').textContent = text;
+}
+function tick() { return new Promise(r => setTimeout(r, 0)); }
+
+// ── Parse textarea → nameSet ───────────────────────────
+// Each line: single name OR "name1 ~ name2" for range
+function parseAllNames() {
+  const lines = document.getElementById('names-textarea').value
+    .split('\n').map(l => l.trim()).filter(Boolean);
+  const result = new Set();
+  const sorted = allSortedStems();
+  const rangePreview = document.getElementById('range-preview');
+  let rangeInfo = [];
+
+  for (const line of lines) {
+    if (line.includes('~')) {
+      const parts = line.split('~').map(p => p.trim());
+      const from = stem(parts[0]), to = stem(parts[1] || '');
+      if (!from || !to) continue;
+      if (!sorted.length) { rangeInfo.push(`⚠ load folder first for range`); continue; }
+      const idxFrom = sorted.findIndex(s => naturalSort(s, from) >= 0);
+      const idxTo   = sorted.findIndex(s => naturalSort(s, to)   >= 0);
+      if (idxFrom === -1) { rangeInfo.push(`⚠ "${from}" not found`); continue; }
+      if (idxTo   === -1) { rangeInfo.push(`⚠ "${to}" not found`);   continue; }
+      const lo = Math.min(idxFrom, idxTo), hi = Math.max(idxFrom, idxTo);
+      sorted.slice(lo, hi + 1).forEach(s => result.add(s));
+      rangeInfo.push(`✓ range: ${hi - lo + 1} files`);
+    } else {
+      result.add(stem(line));
+    }
+  }
+
+  if (rangeInfo.length) {
+    rangePreview.textContent = rangeInfo.join('  |  ');
+    rangePreview.className = 'range-preview ' + (rangeInfo.some(r => r.startsWith('⚠')) ? 'err' : 'ok');
+  } else {
+    rangePreview.textContent = '';
+    rangePreview.className = 'range-preview';
+  }
+
+  return result;
+}
+
+// ── Write file to output dir ───────────────────────────
+async function writeFile(subdir, filename, content) {
+  let dir = outDirHandle;
+  if (subdir) dir = await outDirHandle.getDirectoryHandle(subdir, { create: true });
+  const fh = await dir.getFileHandle(filename, { create: true });
+  const writable = await fh.createWritable();
+  await writable.write(content);
+  await writable.close();
+}
+
+// ── Main run ───────────────────────────────────────────
+async function runCopy() {
+  if (!outDirHandle) { alert('Please select an output folder first.'); return; }
+
+  const hasImg  = Object.keys(imgFiles).length  > 0;
+  const hasJson = Object.keys(jsonFiles).length > 0;
+
+  // collect names from textarea + excel
+  const parsedNames = parseAllNames();
+  excelNames.forEach(n => parsedNames.add(n));
+
+  const textareaEmpty = !document.getElementById('names-textarea').value.trim();
+  if (parsedNames.size === 0 && textareaEmpty && excelNames.size === 0) {
+    alert('Please enter at least one file name.'); return;
+  }
+  if (!hasImg && !hasJson) { alert('Please select at least one source folder.'); return; }
+
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('log').style.display = 'block';
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('stats-row').style.display = 'none';
+  document.getElementById('run-btn').disabled = true;
+
+  const names = [...parsedNames];
+  let imgCopied = 0, jsonCopied = 0, missing = 0;
+  const total = names.length * ((hasImg ? 1 : 0) + (hasJson ? 1 : 0));
+  let done = 0;
+
+  // ── Images ──────────────────────────────────────────
+  if (hasImg) {
+    for (const name of names) {
+      const file = imgFiles[name];
+      if (file) {
+        try {
+          const buf = await file.arrayBuffer();
+          await writeFile('images', file.name, buf);
+          imgCopied++;
+          log(`✓ image: ${file.name}`, 'ok');
+        } catch (e) { log(`✗ write failed: ${file.name} — ${e.message}`, 'err'); }
+      } else {
+        log(`✗ image not found: ${name}`, 'warn');
+        missing++;
+      }
+      done++;
+      setProgress(done / total * 100, `Images… (${done}/${total})`);
+      await tick();
+    }
+  }
+
+  // ── JSON ────────────────────────────────────────────
+  if (hasJson) {
+    const targetStems = new Set(names);
+
+    // Per-image JSON (LabelMe style)
+    for (const name of names) {
+      const file = jsonFiles[name];
+      if (file) {
+        try {
+          const text = await file.text();
+          await writeFile('json', file.name, text);
+          jsonCopied++;
+          log(`✓ json: ${file.name}`, 'ok');
+        } catch (e) { log(`✗ write failed: ${file.name} — ${e.message}`, 'err'); }
+      }
+      done++;
+      setProgress(done / total * 100, `JSON… (${done}/${total})`);
+      await tick();
+    }
+
+    // COCO dataset JSON pass
+    const cocoFiles = Object.entries(jsonFiles).filter(([s]) => !targetStems.has(s));
+    for (const [, file] of cocoFiles) {
+      let raw;
+      try { raw = JSON.parse(await file.text()); } catch { continue; }
+      if (!raw.images || !raw.annotations) continue;
+      const matchedImgs = raw.images.filter(img => targetStems.has(stem(img.file_name)));
+      if (!matchedImgs.length) continue;
+      const matchedIds = new Set(matchedImgs.map(i => i.id));
+      const filtered = {
+        info: raw.info || {}, licenses: raw.licenses || [], categories: raw.categories || [],
+        images: matchedImgs,
+        annotations: raw.annotations.filter(a => matchedIds.has(a.image_id)),
+      };
+      try {
+        await writeFile('json', file.name, JSON.stringify(filtered, null, 2));
+        jsonCopied++;
+        log(`✓ COCO filtered: ${file.name} → ${matchedImgs.length} images`, 'ok');
+      } catch (e) { log(`✗ write failed: ${file.name} — ${e.message}`, 'err'); }
+    }
+  }
+
+  setProgress(100, 'Complete!');
+  document.getElementById('stats-row').style.display = 'flex';
+  document.getElementById('stat-img').textContent  = `🖼 ${imgCopied} images saved`;
+  document.getElementById('stat-json').textContent = `📋 ${jsonCopied} JSON files saved`;
+  document.getElementById('stat-miss').textContent = `⚠ ${missing} not found`;
+  log(`Done → ${outDirHandle.name}/images  &  ${outDirHandle.name}/json`, 'ok');
+  document.getElementById('run-btn').disabled = false;
+}
+
+// ── Reset ──────────────────────────────────────────────
+function clearAll() {
+  imgFiles = {}; jsonFiles = {}; excelNames = new Set(); outDirHandle = null;
+  ['img-folder-path','json-folder-path','out-folder-path'].forEach(id => {
+    const el = document.getElementById(id);
+    el.textContent = 'No folder selected';
+    el.classList.add('empty');
+  });
+  document.getElementById('names-textarea').value = '';
+  document.getElementById('range-preview').textContent = '';
+  document.getElementById('range-preview').className = 'range-preview';
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('stats-row').style.display = 'none';
+  document.getElementById('log').style.display = 'none';
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('excel-drop').classList.remove('has-file');
+  document.getElementById('excel-drop-label').textContent = 'Drop .xlsx / .xls here\nor click to browse';
+  ['img-folder-input','json-folder-input','excel-input'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+</script>
+</body>
+</html>
