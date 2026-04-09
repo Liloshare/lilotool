@@ -3,241 +3,348 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>툴 모음</title>
-  <style>
-  :root{
-    --bg: #f4f6fb;
-    --card: rgba(255,255,255,0.78);
-    --text: #111827;
-    --muted: #6b7280;
-    --border: rgba(17,24,39,0.08);
-    --shadow: 0 18px 45px rgba(17, 24, 39, 0.12);
-    --shadow-hover: 0 26px 70px rgba(17, 24, 39, 0.16);
-    --radius: 26px;
-  }
+    <title>Lilo · Tools</title>
+    <style>
+    :root {
+        --bg: #f5f4f2;
+        --card: #ffffff;
+        --text: #1a1a2e;
+        --muted: #6b7280;
+        --border: rgba(17,24,39,0.07);
+        --accent: #7c3aed;
+        --accent-soft: rgba(124,58,237,0.08);
+        --sidebar-w: 210px;
+        --radius: 14px;
+        --radius-sm: 10px;
+    }
 
-  * { margin:0; padding:0; box-sizing:border-box; }
+    * { margin:0; padding:0; box-sizing:border-box; }
 
-  body{
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
-    background:
-      radial-gradient(1200px 600px at 15% 10%, rgba(167, 139, 250, 0.18), transparent 55%),
-      radial-gradient(900px 500px at 85% 15%, rgba(56, 189, 248, 0.16), transparent 55%),
-      radial-gradient(1000px 600px at 70% 85%, rgba(251, 113, 133, 0.14), transparent 55%),
-      var(--bg);
-    min-height: 100vh;
-    padding: 48px 20px;
-    color: var(--text);
-  }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI', 'Malgun Gothic', sans-serif;
+        background:
+            radial-gradient(900px 500px at 10% 5%,  rgba(124,58,237,0.08), transparent 60%),
+            radial-gradient(700px 400px at 90% 10%, rgba(124,58,237,0.05), transparent 60%),
+            var(--bg);
+        min-height: 100vh;
+        color: var(--text);
+    }
 
-  .container{ max-width: 1200px; margin: 0 auto; }
+    .app { display: flex; min-height: 100vh; }
 
-  h1{
-    color: var(--text);
-    text-align: center;
-    font-size: 44px;
-    margin-bottom: 12px;
-    letter-spacing: -0.02em;
-    text-shadow: none;
-  }
+    /* ─── Sidebar ─── */
+    .sidebar {
+        width: var(--sidebar-w);
+        min-height: 100vh;
+        background: var(--card);
+        border-right: 1px solid var(--border);
+        padding: 28px 0 24px;
+        display: flex;
+        flex-direction: column;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+        flex-shrink: 0;
+    }
 
-  .subtitle{
-    color: rgba(17,24,39,0.55);
-    text-align: center;
-    font-size: 16px;
-    margin-bottom: 50px;
-  }
+    .sidebar-profile {
+        padding: 0 18px 22px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 18px;
+    }
+    .sidebar-avatar {
+        width: 38px; height: 38px;
+        border-radius: 50%;
+        border: 2px solid var(--accent-soft);
+        margin-bottom: 10px;
+        display: block;
+    }
+    .sidebar-name { font-size: 14px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+    .sidebar-handle { font-size: 11px; color: var(--muted); margin-top: 1px; }
 
-  .tools-grid{
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 26px;
-    margin-bottom: 56px;
-  }
+    .sidebar-section-label {
+        padding: 0 18px;
+        font-size: 9px; font-weight: 700;
+        letter-spacing: 0.08em; text-transform: uppercase;
+        color: var(--muted); margin-bottom: 4px;
+    }
 
-  .tool-card{
-    position: relative;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 38px 34px;
-    text-align: center;
-    transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
-    cursor: pointer;
-    text-decoration: none;
-    color: inherit;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    overflow: hidden;
-  }
+    .nav-item {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 8px 18px;
+        font-size: 13px; font-weight: 600; color: var(--muted);
+        cursor: pointer; background: none; border: none;
+        width: 100%; text-align: left; font-family: inherit;
+        transition: background .12s, color .12s;
+    }
+    .nav-item:hover { background: var(--accent-soft); color: var(--text); }
+    .nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+    .nav-count {
+        font-size: 10px; font-weight: 700; color: var(--muted);
+        background: rgba(17,24,39,0.06);
+        padding: 1px 7px; border-radius: 999px;
+    }
+    .nav-item.active .nav-count { background: var(--accent); color: white; }
 
-  /* 카드 상단 파스텔 하이라이트(대시보드 느낌) */
-  .tool-card::before{
-    content:"";
-    position:absolute;
-    inset:-2px -2px auto -2px;
-    height: 110px;
-    background: linear-gradient(135deg,
-      rgba(167,139,250,0.35),
-      rgba(56,189,248,0.30),
-      rgba(251,113,133,0.22)
-    );
-    filter: blur(0px);
-    opacity: .9;
-    pointer-events: none;
-  }
+    /* ─── Main ─── */
+    .main { flex: 1; padding: 30px 26px 64px; min-width: 0; }
 
-  .tool-card:hover{
-    transform: translateY(-8px);
-    box-shadow: var(--shadow-hover);
-    border-color: rgba(17,24,39,0.12);
-  }
+    .page-title { font-size: 18px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 3px; }
+    .page-sub { font-size: 12px; color: var(--muted); margin-bottom: 22px; }
 
-  .tool-icon{
-    font-size: 60px;
-    margin-bottom: 18px;
-    position: relative;
-    z-index: 1;
-  }
+    /* ─── Section Heading ─── */
+    .section-heading {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 13px; font-weight: 700; color: var(--text);
+        margin-bottom: 14px;
+    }
+    .section-heading::before {
+        content: ''; display: block;
+        width: 4px; height: 16px;
+        background: var(--accent); border-radius: 2px; flex-shrink: 0;
+    }
 
-  .tool-title{
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 10px;
-    position: relative;
-    z-index: 1;
-  }
+    /* ─── GitHub Panel ─── */
+    .panel {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px 22px;
+        box-shadow: 0 1px 4px rgba(17,24,39,0.05);
+        margin-bottom: 24px;
+    }
+    .gh-profile-row {
+        display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+    }
+    .gh-avatar-sm {
+        width: 30px; height: 30px;
+        border-radius: 50%; border: 2px solid var(--accent-soft);
+    }
+    .gh-name { font-size: 12px; font-weight: 700; }
+    .gh-handle { font-size: 10px; color: var(--muted); }
+    .contrib-graph { width: 100%; display: block; border-radius: 4px; opacity: 0.88; margin-bottom: 14px; }
+    .gh-mini-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .gh-mini { background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; }
+    .gh-mini-label {
+        font-size: 9px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        color: var(--muted); margin-bottom: 3px;
+    }
+    .gh-mini-val { font-size: 22px; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; }
 
-  .tool-description{
-    color: rgba(17,24,39,0.55);
-    font-size: 14px;
-    line-height: 1.65;
-    position: relative;
-    z-index: 1;
-  }
+    /* ─── Tools Grid ─── */
+    .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+    .tool-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 14px 15px;
+        text-decoration: none; color: inherit;
+        display: flex; flex-direction: column; gap: 4px;
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        box-shadow: 0 1px 4px rgba(17,24,39,0.05);
+    }
+    .tool-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(17,24,39,0.09);
+        border-color: rgba(124,58,237,0.22);
+    }
+    .tool-icon { font-size: 22px; line-height: 1; margin-bottom: 5px; }
+    .tool-title { font-size: 12.5px; font-weight: 700; color: var(--text); line-height: 1.35; }
+    .tool-description { font-size: 11px; color: var(--muted); line-height: 1.5; flex: 1; }
+    .tool-tag {
+        margin-top: 8px; display: inline-block;
+        font-size: 10px; font-weight: 600;
+        padding: 2px 8px; border-radius: 999px;
+        color: var(--muted); background: var(--accent-soft); width: fit-content;
+    }
 
-  .tool-tag{
-    display: inline-block;
-    margin-top: 14px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    color: rgba(17,24,39,0.65);
-    background: rgba(255,255,255,0.65);
-    border: 1px solid rgba(17,24,39,0.08);
-    position: relative;
-    z-index: 1;
-  }
+    footer { text-align: center; color: rgba(17,24,39,0.3); margin-top: 48px; font-size: 12px; }
 
-  footer{
-    text-align: center;
-    color: rgba(17,24,39,0.45);
-    margin-top: 56px;
-    font-size: 13px;
-  }
-</style>
-
+    @media (max-width: 1100px) { .tools-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 900px) {
+        .app { flex-direction: column; }
+        .sidebar {
+            width: 100%; min-height: auto; height: auto;
+            position: relative; flex-direction: row;
+            flex-wrap: wrap; align-items: center;
+            padding: 14px 18px; gap: 8px;
+            border-right: none; border-bottom: 1px solid var(--border);
+        }
+        .sidebar-profile { border-bottom: none; padding-bottom: 0; margin-bottom: 0; display: flex; align-items: center; gap: 8px; }
+        .sidebar-avatar { margin-bottom: 0; width: 28px; height: 28px; }
+        .sidebar-section-label { display: none; }
+        .nav-item { width: auto; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); }
+        .nav-item.active { border-color: var(--accent); }
+        .gh-mini-stats { grid-template-columns: repeat(2, 1fr); }
+        .tools-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) { .tools-grid { grid-template-columns: 1fr; } }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🛠️ 툴 모음</h1>
-        <p class="subtitle">필요한 도구를 선택하세요</p>
-        
-        <div class="tools-grid">
-            <a href="folder_analyzer.html" class="tool-card">
+<div class="app">
+
+    <!-- ─── Sidebar ─── -->
+    <aside class="sidebar">
+        <div class="sidebar-profile">
+            <img class="sidebar-avatar" src="https://avatars.githubusercontent.com/Liloshare" alt="Lilo">
+            <div class="sidebar-name">Lilo</div>
+            <div class="sidebar-handle">@Liloshare</div>
+        </div>
+
+        <div class="sidebar-section-label">카테고리</div>
+        <button class="nav-item active" data-filter="전체">전체 <span class="nav-count">9</span></button>
+        <button class="nav-item" data-filter="파일 관리">파일 관리 <span class="nav-count">2</span></button>
+        <button class="nav-item" data-filter="검수 도구">검수 도구 <span class="nav-count">6</span></button>
+        <button class="nav-item" data-filter="노트">노트 <span class="nav-count">1</span></button>
+    </aside>
+
+    <!-- ─── Main ─── -->
+    <main class="main">
+        <div class="page-title">Lilo's Tools</div>
+        <div class="page-sub">필요한 도구를 선택하세요</div>
+
+        <!-- GitHub -->
+        <div class="panel">
+            <div class="section-heading">GitHub Activity</div>
+            <div class="gh-profile-row">
+                <img class="gh-avatar-sm" src="https://avatars.githubusercontent.com/Liloshare" alt="Lilo">
+                <div>
+                    <div class="gh-name">Lilo Liloshare</div>
+                    <div class="gh-handle">@Liloshare</div>
+                </div>
+            </div>
+            <img class="contrib-graph" src="https://ghchart.rshah.org/7c3aed/Liloshare" alt="GitHub contributions">
+            <div class="gh-mini-stats">
+                <div class="gh-mini">
+                    <div class="gh-mini-label">Public Repos</div>
+                    <div class="gh-mini-val" id="gh-repos">—</div>
+                </div>
+                <div class="gh-mini">
+                    <div class="gh-mini-label">Followers</div>
+                    <div class="gh-mini-val" id="gh-followers">—</div>
+                </div>
+                <div class="gh-mini">
+                    <div class="gh-mini-label">누적 기여자</div>
+                    <div class="gh-mini-val" id="gh-contributors">—</div>
+                </div>
+                <div class="gh-mini">
+                    <div class="gh-mini-label">Total Tools</div>
+                    <div class="gh-mini-val">9</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tools -->
+        <div class="section-heading">Tools</div>
+        <div class="tools-grid" id="toolsGrid">
+
+            <a href="folder_analyzer.html" class="tool-card" data-cat="파일 관리">
                 <div class="tool-icon">📁</div>
                 <div class="tool-title">폴더 파일 수 분석기</div>
-                <div class="tool-description">
-                    폴더 내 파일 개수와 형식을<br>
-                    엑셀로 정리해주는 도구
-                </div>
+                <div class="tool-description">폴더 내 파일 개수와 형식을 엑셀로 정리</div>
                 <span class="tool-tag">파일 관리</span>
             </a>
-            <a href="File_Copy_Tool.html" class="tool-card">
+
+            <a href="File_Copy_Tool.html" class="tool-card" data-cat="파일 관리">
                 <div class="tool-icon">📂</div>
-                <div class="tool-title">Issue file copy</div>
-                <div class="tool-description">
-                    이슈 파일만 모아서 고치는 파일
-                </div>
+                <div class="tool-title">Issue File Copy</div>
+                <div class="tool-description">이슈 파일만 모아서 복사하는 도구</div>
                 <span class="tool-tag">파일 관리</span>
             </a>
-            <a href="todolist.html" class="tool-card">
+
+            <a href="todolist.html" class="tool-card" data-cat="노트">
                 <div class="tool-icon">✅</div>
                 <div class="tool-title">뚜두 리스트</div>
-                <div class="tool-description">
-                    데일리 투두리스트<br>
-                    
-                </div>
+                <div class="tool-description">데일리 투두리스트</div>
                 <span class="tool-tag">노트</span>
             </a>
 
-             <a href="json 필드 검사 도구.html" class="tool-card">
+            <a href="json 필드 검사 도구.html" class="tool-card" data-cat="검수 도구">
                 <div class="tool-icon">⛏️</div>
                 <div class="tool-title">클래스 검사 도구</div>
-                <div class="tool-description">
-                    잘못된 클래스를 잡아줄게요<br>
-                    
-                </div>
-                <span class="tool-tag">파일 검사</span>
+                <div class="tool-description">JSON에서 잘못된 클래스를 감지</div>
+                <span class="tool-tag">검수 도구</span>
             </a>
-           <a href="Format_Converter.html" class="tool-card">
+
+            <a href="Format_Converter.html" class="tool-card" data-cat="검수 도구">
                 <div class="tool-icon">🇮🇳</div>
                 <div class="tool-title">Format Converter</div>
-                <div class="tool-description">
-                    For global workforce <br>
-                    
-                </div>
+                <div class="tool-description">For global workforce</div>
                 <span class="tool-tag">검수 도구</span>
             </a>
-            
-            <a href="segmentation_inspection.html" class="tool-card">
+
+            <a href="segmentation_inspection.html" class="tool-card" data-cat="검수 도구">
                 <div class="tool-icon">🖼️</div>
-                <div class="tool-title">panoptic segmentation 검수</div>
-                <div class="tool-description">
-                    panoptic segmentation 검수<br>
-                    메이드 바이 정화
-                </div>
+                <div class="tool-title">Panoptic Segmentation 검수</div>
+                <div class="tool-description">파노프틱 세그멘테이션 검수 도구</div>
                 <span class="tool-tag">검수 도구</span>
             </a>
-            
-             <a href="TSR_Image_Cropper.html" class="tool-card">
-                <div class="tool-icon">🇮🇳</div>
+
+            <a href="TSR_Image_Cropper.html" class="tool-card" data-cat="검수 도구">
+                <div class="tool-icon">🔍</div>
                 <div class="tool-title">Bbox 검수</div>
-                <div class="tool-description">
-                    For global workforce <br>
-                    
-                </div>
+                <div class="tool-description">For global workforce</div>
                 <span class="tool-tag">검수 도구</span>
             </a>
 
-            <a href="bbox_viewer.html" class="tool-card">
+            <a href="bbox_viewer.html" class="tool-card" data-cat="검수 도구">
                 <div class="tool-icon">✏️</div>
-                <div class="tool-title">bbox 뷰어</div>
-                <div class="tool-description">
-                    json과 이미지 파일을 넣어<br>
-                    bbox 수와 퀄리티 확인하는 화면
-                </div>
-                <span class="tool-tag">검수 뷰어</span>
-            </a>
-
-             <a href="Instance_Segmentation_QC_Tool.html" class="tool-card">
-                <div class="tool-icon">🇮🇳</div>
-                <div class="tool-title">Instance Segmentation 검수</div>
-                <div class="tool-description">
-                    For global workforce <br>
-                    
-                </div>
+                <div class="tool-title">Bbox 뷰어</div>
+                <div class="tool-description">JSON과 이미지로 bbox 수와 퀄리티 확인</div>
                 <span class="tool-tag">검수 도구</span>
             </a>
-            <!-- 더 추가 -->
+
+            <a href="Instance_Segmentation_QC_Tool.html" class="tool-card" data-cat="검수 도구">
+                <div class="tool-icon">🎯</div>
+                <div class="tool-title">Instance Segmentation 검수</div>
+                <div class="tool-description">인스턴스 세그멘테이션 검수 도구</div>
+                <span class="tool-tag">검수 도구</span>
+            </a>
+
         </div>
-        
-        <footer>
-            Love Lilo
-        </footer>
-    </div>
+
+        <footer>Made with ♥ by Lilo</footer>
+    </main>
+</div>
+
+<script>
+// Sidebar filter
+document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', function () {
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const filter = this.dataset.filter;
+        document.querySelectorAll('.tool-card').forEach(card => {
+            card.style.display = (filter === '전체' || card.dataset.cat === filter) ? '' : 'none';
+        });
+    });
+});
+
+// GitHub API - 유저 기본 정보
+fetch('https://api.github.com/users/Liloshare')
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('gh-repos').textContent = data.public_repos ?? '—';
+        document.getElementById('gh-followers').textContent = data.followers ?? '—';
+    })
+    .catch(() => {});
+
+// GitHub API - lilotool 레포 누적 기여자 수
+fetch('https://api.github.com/repos/Liloshare/lilotool/contributors?per_page=100')
+    .then(r => r.json())
+    .then(data => {
+        if (Array.isArray(data)) {
+            document.getElementById('gh-contributors').textContent = data.length;
+        }
+    })
+    .catch(() => {});
+</script>
 </body>
 </html>
