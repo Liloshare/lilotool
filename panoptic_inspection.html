@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Inspection Tool - Panoptic Segmentation QA</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f3460;
+            --accent: #e94560;
+            --accent-hover: #ff6b6b;
+            --text-primary: #eaeaea;
+            --text-secondary: #a0a0a0;
+            --border: #2a2a4a;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --highlight: rgba(233, 69, 96, 0.3);
+            --hover-highlight: rgba(0, 255, 255, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', 'JetBrains Mono', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+            gap: 1px;
+            background: var(--border);
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: var(--bg-secondary);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: -0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Left Panel */
+        .left-panel {
+            background: var(--bg-secondary);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-section {
+            border-bottom: 1px solid var(--border);
+            padding: 15px;
+        }
+
+        .panel-section h3 {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        /* File Input */
+        .file-drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--bg-tertiary);
+        }
+
+        .file-drop-zone:hover,
+        .file-drop-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        .file-drop-zone p {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .file-drop-zone .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .stat-item {
+            background: var(--bg-tertiary);
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        /* Image List */
+        .image-list-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 5px;
+            padding: 10px 15px;
+            background: var(--bg-tertiary);
+        }
+
+        .filter-btn {
+            padding: 5px 10px;
+            font-size: 11px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active,
+        .filter-btn:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .image-item {
+            padding: 10px 12px;
+            margin-bottom: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .image-item:hover {
+            background: var(--bg-primary);
+        }
+
+        .image-item.selected {
+            background: var(--accent);
+            color: white;
+        }
+
+        .image-item .status-icons {
+            display: flex;
+            gap: 4px;
+            font-size: 11px;
+        }
+
+        .image-item .status-icons .reviewed { color: var(--success); }
+        .image-item .status-icons .modified { color: var(--warning); }
+
+        /* Right Panel - Canvas */
+        .right-panel {
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .canvas-toolbar {
+            background: var(--bg-secondary);
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-group label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #0a0a15;
+        }
+
+        #mainCanvas {
+            position: absolute;
+            cursor: grab;
+        }
+
+        #mainCanvas:active {
+            cursor: grabbing;
+        }
+
+        .canvas-info {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Navigation */
+        .nav-bar {
+            background: var(--bg-secondary);
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border);
+        }
+
+        .nav-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .progress-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Segment Panel (Overlay) */
+        .segment-panel {
+            position: absolute;
+            top: 60px;
+            right: 15px;
+            width: 320px;
+            background: rgba(22, 33, 62, 0.95);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+            display: none;
+        }
+
+        .segment-panel.visible {
+            display: block;
+        }
+
+        .segment-panel-header {
+            padding: 12px 15px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .segment-panel-header h4 {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .segment-table-container {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .segment-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .segment-table th,
+        .segment-table td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .segment-table th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+        }
+
+        .segment-table tr:hover {
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        .segment-table tr.selected {
+            background: var(--highlight);
+        }
+
+        .segment-table tr.modified {
+            background: rgba(74, 222, 128, 0.15);
+        }
+
+        /* Segment Editor */
+        .segment-editor {
+            padding: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .editor-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .editor-row label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            width: 60px;
+        }
+
+        .editor-row select {
+            flex: 1;
+            padding: 6px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .checkbox-label input {
+            accent-color: var(--accent);
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: #1a1a2e;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 11px;
+        }
+
+        .btn-icon {
+            padding: 6px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-icon:hover {
+            background: var(--border);
+        }
+
+        /* Hidden file input */
+        #folderInput {
+            display: none;
+        }
+
+        /* Loading */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .loading-overlay.visible {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .toast.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-color: var(--success);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Instructions Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .modal-overlay.visible {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: var(--accent);
+        }
+
+        .modal p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .modal ul {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .modal li {
+            margin-bottom: 5px;
+        }
+
+        .modal code {
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🔍 Final Inspection Tool</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="showHelp()">❓ Help</button>
+                <button class="btn btn-secondary" onclick="generateReport()">📊 Report</button>
+                <button class="btn btn-primary" onclick="saveAll()">💾 Save All</button>
+            </div>
+        </header>
+
+        <!-- Left Panel -->
+        <aside class="left-panel">
+            <div class="panel-section">
+                <h3>📁 Load Data</h3>
+                <div class="file-drop-zone" id="dropZone" onclick="document.getElementById('folderInput').click()">
+                    <div class="icon">📂</div>
+                    <p>폴더 선택 또는 드래그</p>
+                    <p style="font-size: 11px; margin-top: 5px;">JSON + PNG 파일</p>
+                </div>
+                <input type="file" id="folderInput" webkitdirectory multiple accept=".json,.png">
+            </div>
+
+            <div class="panel-section">
+                <h3>📈 Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="statTotal">0</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statReviewed">0</div>
+                        <div class="stat-label">Reviewed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statModified">0</div>
+                        <div class="stat-label">Modified</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statProgress">0%</div>
+                        <div class="stat-label">Progress</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="reviewed">✓ Reviewed</button>
+                <button class="filter-btn" data-filter="unreviewed">Unreviewed</button>
+                <button class="filter-btn" data-filter="modified">✏ Modified</button>
+            </div>
+
+            <div class="image-list-container" id="imageList">
+                <p style="text-align: center; color: var(--text-secondary); padding: 40px 20px; font-size: 13px;">
+                    폴더를 선택하여<br>이미지를 로드하세요
+                </p>
+            </div>
+        </aside>
+
+        <!-- Right Panel -->
+        <main class="right-panel">
+            <div class="canvas-toolbar">
+                <div class="toolbar-group">
+                    <label>Zoom:</label>
+                    <button class="btn-icon" onclick="zoomIn()">+</button>
+                    <button class="btn-icon" onclick="zoomOut()">−</button>
+                    <button class="btn-icon" onclick="fitToWindow()">Fit</button>
+                    <button class="btn-icon" onclick="setZoom(1)">100%</button>
+                    <span id="zoomLevel" style="font-family: 'JetBrains Mono'; font-size: 12px; min-width: 50px;">100%</span>
+                </div>
+                <div class="toolbar-group" style="margin-left: auto;">
+                    <label>
+                        <input type="checkbox" id="showOverlay" checked onchange="toggleOverlay()">
+                        Show Segments
+                    </label>
+                    <button class="btn btn-sm btn-secondary" onclick="toggleSegmentPanel()">📋 Segments</button>
+                </div>
+            </div>
+
+            <div class="canvas-container" id="canvasContainer">
+                <canvas id="mainCanvas"></canvas>
+                <div class="canvas-info" id="canvasInfo">No image loaded</div>
+
+                <!-- Segment Panel -->
+                <div class="segment-panel" id="segmentPanel">
+                    <div class="segment-panel-header">
+                        <h4>Segments</h4>
+                        <button class="btn-icon btn-sm" onclick="toggleSegmentPanel()">✕</button>
+                    </div>
+                    <div class="segment-table-container">
+                        <table class="segment-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Class</th>
+                                    <th>Area</th>
+                                    <th>Crowd</th>
+                                </tr>
+                            </thead>
+                            <tbody id="segmentTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="segment-editor" id="segmentEditor" style="display: none;">
+                        <div class="editor-row">
+                            <label>Class:</label>
+                            <select id="categorySelect"></select>
+                        </div>
+                        <div class="editor-row">
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="iscrowdCheck">
+                                    iscrowd
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="isbuiltinCheck">
+                                    isbuiltin
+                                </label>
+                            </div>
+                        </div>
+                        <div class="editor-actions">
+                            <button class="btn btn-primary btn-sm" onclick="applyEdit()">✓ Apply</button>
+                            <button class="btn btn-secondary btn-sm" onclick="undoEdit()">↶ Undo</button>
+                            <button class="btn btn-secondary btn-sm" onclick="redoEdit()">↷ Redo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-bar">
+                <div class="nav-controls">
+                    <button class="btn btn-secondary" onclick="prevImage()">◀ Prev</button>
+                    <span class="progress-text" id="progressText">0 / 0</span>
+                    <button class="btn btn-secondary" onclick="nextImage()">Next ▶</button>
+                </div>
+                <div class="nav-controls">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="reviewedCheck" onchange="toggleReviewed()">
+                        Reviewed
+                    </label>
+                    <button class="btn btn-success btn-sm" onclick="saveCurrent()">💾 Save</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Help Modal -->
+    <div class="modal-overlay" id="helpModal">
+        <div class="modal">
+            <h2>사용 방법</h2>
+            <p><strong>데이터 로드:</strong></p>
+            <ul>
+                <li>JSON/PNG 파일이 있는 폴더를 선택하세요</li>
+                <li>각 이미지는 <code>0001.json</code> + <code>0001.png</code> 쌍으로 구성</li>
+            </ul>
+            <p><strong>키보드 단축키:</strong></p>
+            <ul>
+                <li><code>←</code> / <code>→</code> : 이전/다음 이미지</li>
+                <li><code>+</code> / <code>-</code> : 줌 인/아웃</li>
+                <li><code>0</code> : Fit to Window</li>
+                <li><code>Ctrl+S</code> : 저장</li>
+                <li><code>Ctrl+Z</code> / <code>Ctrl+Y</code> : Undo/Redo</li>
+            </ul>
+            <p><strong>세그먼트 편집:</strong></p>
+            <ul>
+                <li>이미지 클릭으로 세그먼트 선택</li>
+                <li>클래스, iscrowd, isbuiltin 속성 수정 가능</li>
+            </ul>
+            <button class="btn btn-primary" onclick="hideHelp()" style="margin-top: 15px;">확인</button>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let imageDataList = [];
+        let currentIndex = 0;
+        let categories = {};
+        let inspectionStatus = {};
+        let editHistory = [];
+        let redoStack = [];
+        
+        // Canvas state
+        let canvas, ctx;
+        let originalImage = null;
+        let segmentMask = null;
+        let segmentIds = null;
+        let zoom = 1;
+        let panX = 0, panY = 0;
+        let isDragging = false;
+        let dragStartX = 0, dragStartY = 0;
+        let selectedSegmentId = null;
+        let hoveredSegmentId = null;
+        let showOverlay = true;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('mainCanvas');
+            ctx = canvas.getContext('2d');
+            
+            setupCanvasEvents();
+            setupFileInput();
+            setupKeyboardShortcuts();
+            setupFilterButtons();
+        });
+
+        // File Input
+        function setupFileInput() {
+            const input = document.getElementById('folderInput');
+            const dropZone = document.getElementById('dropZone');
+
+            input.addEventListener('change', handleFiles);
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                const items = e.dataTransfer.items;
+                if (items) {
+                    const files = [];
+                    for (let i = 0; i < items.length; i++) {
+                        const entry = items[i].webkitGetAsEntry();
+                        if (entry) {
+                            traverseFileTree(entry, files);
+                        }
+                    }
+                }
+            });
+        }
+
+        function traverseFileTree(entry, files) {
+            if (entry.isFile) {
+                entry.file(file => {
+                    files.push(file);
+                    if (files.length === files.expectedLength) {
+                        processFiles(files);
+                    }
+                });
+            } else if (entry.isDirectory) {
+                const reader = entry.createReader();
+                reader.readEntries(entries => {
+                    for (const e of entries) {
+                        traverseFileTree(e, files);
+                    }
+                });
+            }
+        }
+
+        async function handleFiles(e) {
+            const files = Array.from(e.target.files);
+            await processFiles(files);
+        }
+
+        async function processFiles(files) {
+            showLoading(true);
+            
+            try {
+                // Group by name
+                const groups = {};
+                
+                for (const file of files) {
+                    const name = file.name.replace(/\.(json|png)$/i, '');
+                    if (!groups[name]) groups[name] = {};
+                    
+                    if (file.name.endsWith('.json')) {
+                        groups[name].json = file;
+                        groups[name].jsonData = JSON.parse(await file.text());
+                    } else if (file.name.endsWith('.png')) {
+                        groups[name].png = file;
+                        groups[name].pngUrl = URL.createObjectURL(file);
+                    }
+                }
+
+                // Filter valid pairs
+                imageDataList = Object.entries(groups)
+                    .filter(([_, g]) => g.json && g.png && g.jsonData)
+                    .map(([name, g]) => ({
+                        name,
+                        jsonFile: g.json,
+                        pngFile: g.png,
+                        jsonData: g.jsonData,
+                        pngUrl: g.pngUrl,
+                        isModified: false
+                    }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+
+                if (imageDataList.length === 0) {
+                    showToast('No valid JSON/PNG pairs found');
+                    return;
+                }
+
+                // Extract categories from first file
+                if (imageDataList[0].jsonData.categories) {
+                    categories = {};
+                    for (const cat of imageDataList[0].jsonData.categories) {
+                        categories[cat.id] = cat;
+                    }
+                    updateCategorySelect();
+                }
+
+                // Initialize inspection status
+                imageDataList.forEach(img => {
+                    if (!inspectionStatus[img.name]) {
+                        inspectionStatus[img.name] = { reviewed: false, modified: false };
+                    }
+                });
+
+                currentIndex = 0;
+                updateImageList();
+                updateStats();
+                loadCurrentImage();
+                
+                showToast(`Loaded ${imageDataList.length} images`, 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Error loading files: ' + err.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Image List
+        function updateImageList(filter = 'all') {
+            const container = document.getElementById('imageList');
+            container.innerHTML = '';
+
+            imageDataList.forEach((img, idx) => {
+                const status = inspectionStatus[img.name] || {};
+                
+                // Apply filter
+                if (filter === 'reviewed' && !status.reviewed) return;
+                if (filter === 'unreviewed' && status.reviewed) return;
+                if (filter === 'modified' && !img.isModified) return;
+
+                const item = document.createElement('div');
+                item.className = 'image-item' + (idx === currentIndex ? ' selected' : '');
+                item.innerHTML = `
+                    <span class="status-icons">
+                        ${status.reviewed ? '<span class="reviewed">✓</span>' : ''}
+                        ${img.isModified ? '<span class="modified">✏</span>' : ''}
+                    </span>
+                    <span>${img.name}</span>
+                `;
+                item.onclick = () => {
+                    currentIndex = idx;
+                    loadCurrentImage();
+                    updateImageList(filter);
+                };
+                container.appendChild(item);
+            });
+        }
+
+        function setupFilterButtons() {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updateImageList(btn.dataset.filter);
+                });
+            });
+        }
+
+        // Canvas Events
+        function setupCanvasEvents() {
+            const container = document.getElementById('canvasContainer');
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                const newZoom = Math.max(0.1, Math.min(10, zoom * delta));
+                
+                // Zoom toward mouse position
+                const imgX = (mouseX - panX) / zoom;
+                const imgY = (mouseY - panY) / zoom;
+                
+                panX = mouseX - imgX * newZoom;
+                panY = mouseY - imgY * newZoom;
+                zoom = newZoom;
+                
+                render();
+                updateZoomLabel();
+            });
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragStartX = e.clientX - panX;
+                dragStartY = e.clientY - panY;
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    panX = e.clientX - dragStartX;
+                    panY = e.clientY - dragStartY;
+                    render();
+                } else {
+                    // Hover detection
+                    const rect = canvas.getBoundingClientRect();
+                    const x = Math.floor((e.clientX - rect.left - panX) / zoom);
+                    const y = Math.floor((e.clientY - rect.top - panY) / zoom);
+                    
+                    if (segmentIds && x >= 0 && y >= 0 && x < segmentIds.width && y < segmentIds.height) {
+                        const idx = (y * segmentIds.width + x) * 4;
+                        const id = segmentIds.data[idx] + 
+                                   segmentIds.data[idx + 1] * 256 + 
+                                   segmentIds.data[idx + 2] * 256 * 256;
+                        
+                        if (id !== hoveredSegmentId) {
+                            hoveredSegmentId = id > 0 ? id : null;
+                            render();
+                        }
+                    }
+                }
+            });
+
+            canvas.addEventListener('mouseup', (e) => {
+                if (!isDragging || (Math.abs(e.clientX - dragStartX - panX) < 5 && Math.abs(e.clientY - dragStartY - panY) < 5)) {
+                    // Click - select segment
+                    const rect = canvas.getBoundingClientRect();
+                    const x = Math.floor((e.clientX - rect.left - panX) / zoom);
+                    const y = Math.floor((e.clientY - rect.top - panY) / zoom);
+                    
+                    if (segmentIds && x >= 0 && y >= 0 && x < segmentIds.width && y < segmentIds.height) {
+                        const idx = (y * segmentIds.width + x) * 4;
+                        const id = segmentIds.data[idx] + 
+                                   segmentIds.data[idx + 1] * 256 + 
+                                   segmentIds.data[idx + 2] * 256 * 256;
+                        
+                        if (id > 0) {
+                            selectSegment(id);
+                        }
+                    }
+                }
+                isDragging = false;
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                isDragging = false;
+                hoveredSegmentId = null;
+                render();
+            });
+        }
+
+        // Load Image
+        async function loadCurrentImage() {
+            if (imageDataList.length === 0) return;
+            
+            const data = imageDataList[currentIndex];
+            
+            // Load original image (use PNG as display)
+            const img = new Image();
+            img.onload = () => {
+                originalImage = img;
+                
+                // Load segment mask
+                loadSegmentMask(data.pngUrl);
+            };
+            img.src = data.pngUrl;
+            
+            // Update UI
+            document.getElementById('progressText').textContent = `${currentIndex + 1} / ${imageDataList.length}`;
+            document.getElementById('reviewedCheck').checked = inspectionStatus[data.name]?.reviewed || false;
+            
+            // Update segment table
+            updateSegmentTable();
+            selectedSegmentId = null;
+            document.getElementById('segmentEditor').style.display = 'none';
+        }
+
+        function loadSegmentMask(url) {
+            const img = new Image();
+            img.onload = () => {
+                // Create temp canvas to read pixel data
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = img.width;
+                tempCanvas.height = img.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(img, 0, 0);
+                
+                segmentIds = tempCtx.getImageData(0, 0, img.width, img.height);
+                
+                fitToWindow();
+            };
+            img.src = url;
+        }
+
+        // Render
+        function render() {
+            if (!originalImage) return;
+            
+            const container = document.getElementById('canvasContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            ctx.fillStyle = '#0a0a15';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            ctx.translate(panX, panY);
+            ctx.scale(zoom, zoom);
+            
+            // Draw image
+            ctx.drawImage(originalImage, 0, 0);
+            
+            // Draw overlay
+            if (showOverlay && segmentIds) {
+                drawSegmentOverlay();
+            }
+            
+            ctx.restore();
+            
+            // Update info
+            const data = imageDataList[currentIndex];
+            document.getElementById('canvasInfo').textContent = 
+                `${data?.name || 'No image'} | ${originalImage?.width}x${originalImage?.height} | Zoom: ${(zoom * 100).toFixed(0)}%`;
+        }
+
+        function drawSegmentOverlay() {
+            if (!segmentIds) return;
+            
+            const overlayCanvas = document.createElement('canvas');
+            overlayCanvas.width = segmentIds.width;
+            overlayCanvas.height = segmentIds.height;
+            const overlayCtx = overlayCanvas.getContext('2d');
+            const overlayData = overlayCtx.createImageData(segmentIds.width, segmentIds.height);
+            
+            for (let i = 0; i < segmentIds.data.length; i += 4) {
+                const id = segmentIds.data[i] + 
+                           segmentIds.data[i + 1] * 256 + 
+                           segmentIds.data[i + 2] * 256 * 256;
+                
+                if (id === selectedSegmentId) {
+                    overlayData.data[i] = 255;
+                    overlayData.data[i + 1] = 255;
+                    overlayData.data[i + 2] = 0;
+                    overlayData.data[i + 3] = 100;
+                } else if (id === hoveredSegmentId && id !== selectedSegmentId) {
+                    overlayData.data[i] = 0;
+                    overlayData.data[i + 1] = 255;
+                    overlayData.data[i + 2] = 255;
+                    overlayData.data[i + 3] = 80;
+                }
+            }
+            
+            overlayCtx.putImageData(overlayData, 0, 0);
+            ctx.globalAlpha = 1;
+            ctx.drawImage(overlayCanvas, 0, 0);
+        }
+
+        // Zoom
+        function zoomIn() { setZoom(zoom * 1.25); }
+        function zoomOut() { setZoom(zoom * 0.8); }
+        
+        function setZoom(level) {
+            zoom = Math.max(0.1, Math.min(10, level));
+            render();
+            updateZoomLabel();
+        }
+
+        function fitToWindow() {
+            if (!originalImage) return;
+            
+            const container = document.getElementById('canvasContainer');
+            const scaleX = container.clientWidth / originalImage.width;
+            const scaleY = container.clientHeight / originalImage.height;
+            zoom = Math.min(scaleX, scaleY) * 0.95;
+            
+            panX = (container.clientWidth - originalImage.width * zoom) / 2;
+            panY = (container.clientHeight - originalImage.height * zoom) / 2;
+            
+            render();
+            updateZoomLabel();
+        }
+
+        function updateZoomLabel() {
+            document.getElementById('zoomLevel').textContent = `${(zoom * 100).toFixed(0)}%`;
+        }
+
+        function toggleOverlay() {
+            showOverlay = document.getElementById('showOverlay').checked;
+            render();
+        }
+
+        // Segment Table
+        function updateSegmentTable() {
+            const tbody = document.getElementById('segmentTableBody');
+            tbody.innerHTML = '';
+            
+            const data = imageDataList[currentIndex];
+            if (!data?.jsonData?.annotations?.[0]?.segments_info) return;
+            
+            const segments = data.jsonData.annotations[0].segments_info;
+            
+            segments.forEach(seg => {
+                const cat = categories[seg.category_id] || { name: 'Unknown' };
+                const tr = document.createElement('tr');
+                tr.className = seg.id === selectedSegmentId ? 'selected' : '';
+                tr.innerHTML = `
+                    <td>${seg.id}</td>
+                    <td>${cat.name}</td>
+                    <td>${seg.area?.toLocaleString() || 0}</td>
+                    <td>${seg.iscrowd}</td>
+                `;
+                tr.onclick = () => selectSegment(seg.id);
+                tbody.appendChild(tr);
+            });
+        }
+
+        function selectSegment(id) {
+            selectedSegmentId = id;
+            render();
+            updateSegmentTable();
+            
+            // Show editor
+            const data = imageDataList[currentIndex];
+            const segment = data?.jsonData?.annotations?.[0]?.segments_info?.find(s => s.id === id);
+            
+            if (segment) {
+                document.getElementById('segmentEditor').style.display = 'block';
+                document.getElementById('categorySelect').value = segment.category_id;
+                document.getElementById('iscrowdCheck').checked = segment.iscrowd === 1;
+                document.getElementById('isbuiltinCheck').checked = segment.isbuiltin === 1;
+            }
+        }
+
+        function updateCategorySelect() {
+            const select = document.getElementById('categorySelect');
+            select.innerHTML = '';
+            
+            Object.values(categories)
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat.id;
+                    opt.textContent = `${cat.name} (${cat.id})`;
+                    select.appendChild(opt);
+                });
+        }
+
+        // Editing
+        function applyEdit() {
+            if (!selectedSegmentId) return;
+            
+            const data = imageDataList[currentIndex];
+            const segment = data?.jsonData?.annotations?.[0]?.segments_info?.find(s => s.id === selectedSegmentId);
+            
+            if (!segment) return;
+            
+            const newCatId = parseInt(document.getElementById('categorySelect').value);
+            const newIscrowd = document.getElementById('iscrowdCheck').checked ? 1 : 0;
+            const newIsbuiltin = document.getElementById('isbuiltinCheck').checked ? 1 : 0;
+            
+            // Save to history
+            editHistory.push({
+                index: currentIndex,
+                segmentId: selectedSegmentId,
+                oldValues: { 
+                    category_id: segment.category_id, 
+                    iscrowd: segment.iscrowd, 
+                    isbuiltin: segment.isbuiltin 
+                },
+                newValues: { 
+                    category_id: newCatId, 
+                    iscrowd: newIscrowd, 
+                    isbuiltin: newIsbuiltin 
+                }
+            });
+            redoStack = [];
+            
+            // Apply
+            segment.category_id = newCatId;
+            segment.iscrowd = newIscrowd;
+            segment.isbuiltin = newIsbuiltin;
+            
+            data.isModified = true;
+            inspectionStatus[data.name].modified = true;
+            
+            updateSegmentTable();
+            updateStats();
+            showToast('Applied changes');
+        }
+
+        function undoEdit() {
+            if (editHistory.length === 0) return;
+            
+            const edit = editHistory.pop();
+            redoStack.push(edit);
+            
+            const data = imageDataList[edit.index];
+            const segment = data?.jsonData?.annotations?.[0]?.segments_info?.find(s => s.id === edit.segmentId);
+            
+            if (segment) {
+                segment.category_id = edit.oldValues.category_id;
+                segment.iscrowd = edit.oldValues.iscrowd;
+                segment.isbuiltin = edit.oldValues.isbuiltin;
+            }
+            
+            if (edit.index === currentIndex) {
+                updateSegmentTable();
+                if (selectedSegmentId === edit.segmentId) {
+                    selectSegment(edit.segmentId);
+                }
+            }
+            
+            showToast('Undo');
+        }
+
+        function redoEdit() {
+            if (redoStack.length === 0) return;
+            
+            const edit = redoStack.pop();
+            editHistory.push(edit);
+            
+            const data = imageDataList[edit.index];
+            const segment = data?.jsonData?.annotations?.[0]?.segments_info?.find(s => s.id === edit.segmentId);
+            
+            if (segment) {
+                segment.category_id = edit.newValues.category_id;
+                segment.iscrowd = edit.newValues.iscrowd;
+                segment.isbuiltin = edit.newValues.isbuiltin;
+            }
+            
+            if (edit.index === currentIndex) {
+                updateSegmentTable();
+                if (selectedSegmentId === edit.segmentId) {
+                    selectSegment(edit.segmentId);
+                }
+            }
+            
+            showToast('Redo');
+        }
+
+        // Navigation
+        function prevImage() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                loadCurrentImage();
+                updateImageList(document.querySelector('.filter-btn.active')?.dataset.filter || 'all');
+            }
+        }
+
+        function nextImage() {
+            if (currentIndex < imageDataList.length - 1) {
+                currentIndex++;
+                loadCurrentImage();
+                updateImageList(document.querySelector('.filter-btn.active')?.dataset.filter || 'all');
+            }
+        }
+
+        function toggleReviewed() {
+            const data = imageDataList[currentIndex];
+            if (data) {
+                inspectionStatus[data.name].reviewed = document.getElementById('reviewedCheck').checked;
+                updateImageList(document.querySelector('.filter-btn.active')?.dataset.filter || 'all');
+                updateStats();
+            }
+        }
+
+        // Save
+        function saveCurrent() {
+            const data = imageDataList[currentIndex];
+            if (!data) return;
+            
+            const json = JSON.stringify(data.jsonData, null, 2);
+            downloadFile(json, data.jsonFile.name, 'application/json');
+            showToast(`Saved: ${data.jsonFile.name}`, 'success');
+        }
+
+        function saveAll() {
+            const modified = imageDataList.filter(d => d.isModified);
+            if (modified.length === 0) {
+                showToast('No modified files');
+                return;
+            }
+            
+            modified.forEach(data => {
+                const json = JSON.stringify(data.jsonData, null, 2);
+                downloadFile(json, data.jsonFile.name, 'application/json');
+            });
+            
+            showToast(`Saved ${modified.length} files`, 'success');
+        }
+
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Report
+        function generateReport() {
+            let report = `Final Inspection Report\n`;
+            report += `Generated: ${new Date().toISOString()}\n\n`;
+            report += `Total Images: ${imageDataList.length}\n`;
+            
+            const reviewed = Object.values(inspectionStatus).filter(s => s.reviewed).length;
+            const modified = imageDataList.filter(d => d.isModified).length;
+            
+            report += `Reviewed: ${reviewed} (${(reviewed/imageDataList.length*100).toFixed(1)}%)\n`;
+            report += `Modified: ${modified}\n\n`;
+            
+            report += `Edit History:\n`;
+            editHistory.forEach((edit, i) => {
+                report += `${i+1}. Image: ${imageDataList[edit.index]?.name}, Segment: ${edit.segmentId}\n`;
+                report += `   Category: ${edit.oldValues.category_id} → ${edit.newValues.category_id}\n`;
+            });
+            
+            downloadFile(report, 'inspection_report.txt', 'text/plain');
+            showToast('Report generated', 'success');
+        }
+
+        // UI
+        function updateStats() {
+            document.getElementById('statTotal').textContent = imageDataList.length;
+            
+            const reviewed = Object.values(inspectionStatus).filter(s => s.reviewed).length;
+            document.getElementById('statReviewed').textContent = reviewed;
+            
+            const modified = imageDataList.filter(d => d.isModified).length;
+            document.getElementById('statModified').textContent = modified;
+            
+            const progress = imageDataList.length > 0 ? (reviewed / imageDataList.length * 100).toFixed(0) : 0;
+            document.getElementById('statProgress').textContent = `${progress}%`;
+        }
+
+        function toggleSegmentPanel() {
+            const panel = document.getElementById('segmentPanel');
+            panel.classList.toggle('visible');
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').classList.toggle('visible', show);
+        }
+
+        function showToast(msg, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast visible' + (type ? ` ${type}` : '');
+            setTimeout(() => toast.classList.remove('visible'), 3000);
+        }
+
+        function showHelp() {
+            document.getElementById('helpModal').classList.add('visible');
+        }
+
+        function hideHelp() {
+            document.getElementById('helpModal').classList.remove('visible');
+        }
+
+        // Keyboard Shortcuts
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+                
+                if (e.key === 'ArrowLeft') prevImage();
+                else if (e.key === 'ArrowRight') nextImage();
+                else if (e.key === '+' || e.key === '=') zoomIn();
+                else if (e.key === '-') zoomOut();
+                else if (e.key === '0') fitToWindow();
+                else if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveCurrent(); }
+                else if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undoEdit(); }
+                else if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redoEdit(); }
+            });
+        }
+
+        // Window resize
+        window.addEventListener('resize', () => {
+            if (originalImage) render();
+        });
+    </script>
+</body>
+</html>
