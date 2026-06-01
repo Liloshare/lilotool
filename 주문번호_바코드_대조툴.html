@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>주문번호 바코드 대조툴</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; background: #f4f6f8; color: #1f2933;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+header {
+  background: #25384d; color: #fff; padding: 18px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+h1 { margin: 0; font-size: 22px; letter-spacing: 0; }
+main { max-width: 1040px; margin: 0 auto; padding: 24px; }
+.panel {
+  background: #fff; border: 1px solid #dbe2ea; border-radius: 8px;
+  padding: 18px; margin-bottom: 16px;
+}
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.file-box {
+  border: 1px solid #dbe2ea; border-radius: 6px; padding: 14px;
+  min-height: 116px; display: flex; flex-direction: column; gap: 10px;
+}
+.file-box h2 { margin: 0; font-size: 15px; color: #334e68; }
+.file-box p { margin: 0; color: #627d98; font-size: 13px; line-height: 1.45; }
+input[type="file"] { display: none; }
+button, .file-label {
+  border: none; border-radius: 6px; padding: 10px 14px; cursor: pointer;
+  font-size: 14px; font-weight: 700; text-align: center;
+}
+.file-label { display: inline-block; background: #e8f1fb; color: #1769aa; }
+.file-label:hover { background: #d8eafa; }
+.primary { background: #2f80ed; color: #fff; }
+.primary:hover:not(:disabled) { background: #1f6fd1; }
+.primary:disabled { background: #a7b6c8; cursor: not-allowed; }
+.secondary { background: #e9edf2; color: #334e68; }
+.status {
+  font-size: 13px; color: #52606d; white-space: pre-wrap; line-height: 1.5;
+  background: #f8fafc; border: 1px solid #e4e9f0; border-radius: 6px;
+  padding: 12px; min-height: 88px;
+}
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+.stat { background: #f8fafc; border: 1px solid #e4e9f0; border-radius: 6px; padding: 12px; }
+.stat strong { display: block; font-size: 22px; color: #243b53; }
+.stat span { font-size: 12px; color: #627d98; }
+.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.hint { color: #829ab1; font-size: 12px; }
+@media (max-width: 760px) {
+  .grid, .stats { grid-template-columns: 1fr; }
+  header { align-items: flex-start; flex-direction: column; }
+}
+
+body {
+  color: #34312f;
+  background: linear-gradient(135deg, #faf8f5 0%, #f4f3bd 100%);
+}
+header {
+  background: #aec4ca;
+  color: #24313d;
+  border-bottom: 1px solid #9bb3ba;
+}
+.panel,
+.file-box,
+.stat,
+.status {
+  background: rgba(255,255,255,0.88);
+  border-color: #d9d5d2;
+  box-shadow: 0 10px 28px rgba(117, 126, 130, 0.12);
+}
+.file-box h2,
+.stat strong { color: #536f77; }
+.file-box p,
+.status,
+.stat span,
+.hint { color: #6d7476; }
+.file-label {
+  background: #d9e9e3;
+  color: #425d65;
+}
+.file-label:hover { background: #c9ddd5; }
+.primary {
+  background: #fcd19e;
+  color: #34312f;
+}
+.primary:hover:not(:disabled) { background: #fcd19e; }
+.primary:disabled {
+  background: #d9d5d2;
+  color: #6c6662;
+}
+.secondary {
+  background: #f4f3bd;
+  color: #5f6f42;
+}
+
+</style>
+</head>
+<body>
+<header>
+  <h1>주문번호 바코드 대조툴</h1>
+  <div class="hint">annotation.json + 주문내역 JSON 폴더 → 대조결과.xlsx</div>
+</header>
+<main>
+  <section class="panel grid">
+    <div class="file-box">
+      <h2>Annotation JSON</h2>
+      <p>COCO 형식 annotation JSON 파일을 선택하세요.</p>
+      <label class="file-label" for="annotationInput">Annotation JSON 선택</label>
+      <input id="annotationInput" type="file" accept=".json">
+      <p id="annotationName" class="hint">선택 안 됨</p>
+    </div>
+    <div class="file-box">
+      <h2>주문내역 JSON 폴더</h2>
+      <p>partial_000.json 같은 주문내역 JSON들이 들어있는 폴더를 선택하세요.</p>
+      <label class="file-label" for="ordersInput">주문내역 폴더 선택</label>
+      <input id="ordersInput" type="file" webkitdirectory multiple accept=".json">
+      <p id="ordersName" class="hint">선택 안 됨</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="actions">
+      <button id="compareBtn" class="primary" disabled>대조결과.xlsx 다운로드</button>
+      <button id="resetBtn" class="secondary">초기화</button>
+      <span class="hint">주문내역의 바코드 종류와 수량이 완전히 같아야 일치입니다.</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><strong id="statTotal">0</strong><span>전체 이미지</span></div>
+      <div class="stat"><strong id="statMatch">0</strong><span>일치</span></div>
+      <div class="stat"><strong id="statMismatch">0</strong><span>불일치</span></div>
+      <div class="stat"><strong id="statNoOrder">0</strong><span>주문번호 없음</span></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div id="status" class="status">파일을 선택하면 대조를 시작할 수 있습니다.</div>
+  </section>
+</main>
+
+<script>
+let annotationFile = null;
+let orderFiles = [];
+
+const annotationInput = document.getElementById('annotationInput');
+const ordersInput = document.getElementById('ordersInput');
+const compareBtn = document.getElementById('compareBtn');
+const statusEl = document.getElementById('status');
+
+annotationInput.addEventListener('change', () => {
+  annotationFile = annotationInput.files && annotationInput.files[0] ? annotationInput.files[0] : null;
+  document.getElementById('annotationName').textContent = annotationFile ? annotationFile.name : '선택 안 됨';
+  updateReady();
+});
+
+ordersInput.addEventListener('change', () => {
+  orderFiles = [...(ordersInput.files || [])].filter(file => file.name.toLowerCase().endsWith('.json'));
+  document.getElementById('ordersName').textContent = orderFiles.length ? orderFiles.length + '개 JSON 선택됨' : '선택 안 됨';
+  updateReady();
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  annotationInput.value = '';
+  ordersInput.value = '';
+  annotationFile = null;
+  orderFiles = [];
+  document.getElementById('annotationName').textContent = '선택 안 됨';
+  document.getElementById('ordersName').textContent = '선택 안 됨';
+  setStats(0, 0, 0, 0);
+  statusEl.textContent = '파일을 선택하면 대조를 시작할 수 있습니다.';
+  updateReady();
+});
+
+compareBtn.addEventListener('click', async () => {
+  compareBtn.disabled = true;
+  try {
+    setStatus('파일을 읽는 중...');
+    const [annotationData, orderData] = await Promise.all([
+      readJsonFile(annotationFile),
+      readOrderFiles(orderFiles)
+    ]);
+
+    setStatus('대조 중...');
+    const result = compare(annotationData, orderData);
+    setStats(result.rows.length, result.matchCount, result.mismatchCount, result.noOrderCount);
+
+    setStatus('엑셀 파일을 생성하는 중...');
+    await downloadWorkbook(result);
+    setStatus(
+      '완료\n' +
+      '전체 이미지: ' + result.rows.length.toLocaleString() + '\n' +
+      '일치: ' + result.matchCount.toLocaleString() + '\n' +
+      '불일치: ' + result.mismatchCount.toLocaleString() + '\n' +
+      '주문번호 없음: ' + result.noOrderCount.toLocaleString()
+    );
+  } catch (err) {
+    console.error(err);
+    alert('처리 실패: ' + err.message);
+    setStatus('처리 실패: ' + err.message);
+  } finally {
+    updateReady();
+  }
+});
+
+function updateReady() {
+  compareBtn.disabled = !(annotationFile && orderFiles.length > 0);
+}
+
+function setStatus(text) {
+  statusEl.textContent = text;
+}
+
+function setStats(total, match, mismatch, noOrder) {
+  document.getElementById('statTotal').textContent = total.toLocaleString();
+  document.getElementById('statMatch').textContent = match.toLocaleString();
+  document.getElementById('statMismatch').textContent = mismatch.toLocaleString();
+  document.getElementById('statNoOrder').textContent = noOrder.toLocaleString();
+}
+
+function readJsonFile(file) {
+  return file.text().then(text => JSON.parse(text));
+}
+
+async function readOrderFiles(files) {
+  const orderKeys = new Set();
+  const truthByOrder = {};
+  for (let i = 0; i < files.length; i++) {
+    setStatus('주문내역 읽는 중... ' + (i + 1) + ' / ' + files.length);
+    const data = await readJsonFile(files[i]);
+    for (const [orderNoRaw, items] of Object.entries(data || {})) {
+      const orderNo = norm(orderNoRaw);
+      orderKeys.add(orderNo);
+      if (!truthByOrder[orderNo]) truthByOrder[orderNo] = {};
+      for (const item of items || []) {
+        const barcode = norm(item && item.barcode);
+        if (!barcode) continue;
+        const qty = Number(item.qty || 1) || 1;
+        truthByOrder[orderNo][barcode] = (truthByOrder[orderNo][barcode] || 0) + qty;
+      }
+    }
+  }
+  return { truthByOrder, orderKeys };
+}
+
+function compare(coco, orderData) {
+  if (!coco || !Array.isArray(coco.images) || !Array.isArray(coco.annotations)) {
+    throw new Error('annotation JSON 형식이 올바르지 않습니다. images / annotations 배열이 필요합니다.');
+  }
+
+  const imagesById = {};
+  for (const img of coco.images) imagesById[img.id] = img;
+
+  const predByImage = {};
+  const shipmentByImage = {};
+  for (const ann of coco.annotations) {
+    const attrs = ann.attributes || {};
+    const barcode = norm(attrs.barcode);
+    if (!barcode) continue;
+    const imageId = ann.image_id;
+    if (!predByImage[imageId]) predByImage[imageId] = {};
+    predByImage[imageId][barcode] = (predByImage[imageId][barcode] || 0) + 1;
+    const shipment = norm(attrs.shipment_id);
+    if (shipment) {
+      if (!shipmentByImage[imageId]) shipmentByImage[imageId] = new Set();
+      shipmentByImage[imageId].add(shipment);
+    }
+  }
+
+  const rows = [];
+  let matchCount = 0;
+  let mismatchCount = 0;
+  let noOrderCount = 0;
+
+  for (const img of coco.images.slice().sort((a, b) => Number(a.id) - Number(b.id))) {
+    const fileName = img.file_name || '';
+    const orderNo = getOrderNoFromFileName(fileName);
+    const truth = orderData.truthByOrder[orderNo] || {};
+    const pred = predByImage[img.id] || {};
+    const orderExists = orderData.orderKeys.has(orderNo);
+    const diff = buildDiff(truth, pred, orderExists);
+
+    if (diff.status === '일치') matchCount++;
+    else if (diff.status === '주문번호 없음') noOrderCount++;
+    else mismatchCount++;
+
+    rows.push({
+      '파일명': fileName,
+      '주문번호': orderNo,
+      '수정 방향': diff.action,
+      '정답 바코드/수량': counterText(truth),
+      '현재 어노테이션 바코드/수량': counterText(pred),
+      '추가 필요': counterText(diff.missing),
+      '삭제 필요': counterText(diff.extra),
+      '상태': diff.status,
+      '어노테이션 shipment_id': shipmentByImage[img.id] ? [...shipmentByImage[img.id]].sort().join(', ') : '',
+      '정답 총수량': sumCounter(truth),
+      '어노테이션 총수량': sumCounter(pred),
+      'image_id': img.id
+    });
+  }
+
+  return {
+    rows,
+    mismatchRows: rows.filter(row => row['상태'] !== '일치'),
+    matchCount,
+    mismatchCount,
+    noOrderCount
+  };
+}
+
+function buildDiff(truth, pred, orderExists) {
+  const missing = subtractCounter(truth, pred);
+  const extra = subtractCounter(pred, truth);
+  const same = isSameCounter(truth, pred);
+
+  if (!orderExists) {
+    return {
+      status: '주문번호 없음',
+      missing: {},
+      extra,
+      action: '주문내역 파일에 없는 주문번호'
+    };
+  }
+
+  if (same) {
+    return { status: '일치', missing: {}, extra: {}, action: '수정 불필요' };
+  }
+
+  const actions = [];
+  for (const [barcode, qty] of Object.entries(extra).sort(compareEntry)) {
+    actions.push(barcode + (qty > 1 ? ' ' + qty + '개 삭제 필요' : ' 삭제 필요'));
+  }
+  for (const [barcode, qty] of Object.entries(missing).sort(compareEntry)) {
+    actions.push(barcode + (qty > 1 ? ' ' + qty + '개 추가 필요' : ' 추가 필요'));
+  }
+
+  return {
+    status: '불일치',
+    missing,
+    extra,
+    action: actions.join(' // ')
+  };
+}
+
+function counterText(counter) {
+  return Object.entries(counter || {})
+    .sort(compareEntry)
+    .map(([barcode, qty]) => barcode + ' ' + qty + '개')
+    .join(', ');
+}
+
+function subtractCounter(a, b) {
+  const out = {};
+  for (const [key, qty] of Object.entries(a || {})) {
+    const diff = Number(qty || 0) - Number((b || {})[key] || 0);
+    if (diff > 0) out[key] = diff;
+  }
+  return out;
+}
+
+function isSameCounter(a, b) {
+  const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+  for (const key of keys) {
+    if (Number((a || {})[key] || 0) !== Number((b || {})[key] || 0)) return false;
+  }
+  return true;
+}
+
+function sumCounter(counter) {
+  return Object.values(counter || {}).reduce((sum, qty) => sum + Number(qty || 0), 0);
+}
+
+function compareEntry(a, b) {
+  return a[0].localeCompare(b[0], undefined, { numeric: true });
+}
+
+function getOrderNoFromFileName(fileName) {
+  const base = String(fileName || '').split('/').pop().replace(/\.[^.]+$/, '');
+  const parts = base.split('_');
+  return parts[parts.length - 1] || '';
+}
+
+function norm(value) {
+  return value == null ? '' : String(value).trim();
+}
+
+async function loadExcelJS() {
+  if (window.ExcelJS) return window.ExcelJS;
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('ExcelJS 로드에 실패했습니다. 인터넷 연결을 확인해주세요.'));
+    document.head.appendChild(script);
+  });
+  return window.ExcelJS;
+}
+
+async function downloadWorkbook(result) {
+  const ExcelJS = await loadExcelJS();
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Barcode Compare Tool';
+  wb.created = new Date();
+
+  const summaryRows = [
+    { '항목': '생성일시', '값': new Date().toLocaleString('ko-KR') },
+    { '항목': '기준', '값': '주문내역 바코드/수량과 완전히 같아야 일치' },
+    { '항목': '전체 이미지 수', '값': result.rows.length },
+    { '항목': '일치', '값': result.matchCount },
+    { '항목': '불일치', '값': result.mismatchCount },
+    { '항목': '주문번호 없음', '값': result.noOrderCount }
+  ];
+
+  addSheet(wb, '요약', summaryRows);
+  addSheet(wb, '파일별_대조', result.rows);
+  addSheet(wb, '불일치만', result.mismatchRows);
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '주문번호_바코드_대조결과.xlsx';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function addSheet(wb, name, rows) {
+  const ws = wb.addWorksheet(name);
+  const headers = rows.length ? Object.keys(rows[0]) : [];
+  ws.columns = headers.map(header => ({ header, key: header, width: getColumnWidth(header) }));
+  ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+  ws.views = [{ state: 'frozen', ySplit: 1 }];
+  ws.autoFilter = { from: 'A1', to: ws.getRow(1).getCell(headers.length || 1).address };
+
+  for (const row of rows) {
+    const added = ws.addRow(row);
+    if (name !== '요약') {
+      const status = row['상태'];
+      const color = status === '일치' ? 'FFC6EFCE' : status === '주문번호 없음' ? 'FFFCE4D6' : 'FFFFC7CE';
+      added.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+        cell.alignment = { vertical: 'top', wrapText: true };
+      });
+    }
+  }
+}
+
+function getColumnWidth(header) {
+  const widths = {
+    '파일명': 58,
+    '주문번호': 20,
+    '수정 방향': 70,
+    '정답 바코드/수량': 55,
+    '현재 어노테이션 바코드/수량': 55,
+    '추가 필요': 45,
+    '삭제 필요': 45,
+    '상태': 14,
+    '어노테이션 shipment_id': 24
+  };
+  return widths[header] || 14;
+}
+</script>
+</body>
+</html>

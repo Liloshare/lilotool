@@ -1,0 +1,2494 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mask Review Tool</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100vh; overflow: hidden; margin: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; }
+
+/* Header */
+#header {
+  min-height: 50px; background: #2c3e50; color: #fff; padding: 8px 20px;
+  display: flex; align-items: center; gap: 20px; flex-shrink: 0; flex-wrap: wrap;
+}
+#header h1 { font-size: 18px; white-space: nowrap; }
+.header-controls { display: flex; align-items: center; gap: 8px; }
+.header-controls label { font-size: 12px; color: #ecf0f1; white-space: nowrap; }
+.header-controls button {
+  padding: 6px 14px; border: none; border-radius: 4px;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+}
+.header-controls input[type="file"] { display: none; }
+.btn-dataset { background: #3498db; color: #fff; }
+.btn-dataset:hover { background: #2980b9; }
+.btn-sample { background: #8e44ad; color: #fff; }
+.btn-sample:hover { background: #7d3c98; }
+.btn-save { background: #e67e22; color: #fff; }
+.btn-save:hover { background: #d35400; }
+#loadStatus { font-size: 12px; color: #ecf0f1; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Main Layout */
+#mainLayout { display: flex; flex: 1; min-height: 0; }
+#mainLayout.hidden { display: none !important; }
+
+/* Sidebar */
+#sidebar {
+  width: 260px; height: 100%; background: #fff; border-right: 1px solid #ddd;
+  flex-shrink: 0; display: flex; flex-direction: column;
+}
+#sidebarScroll { flex: 1; overflow-y: auto; min-height: 0; padding: 12px 12px 0; }
+#sidebarBottom { flex-shrink: 0; border-top: 1px solid #ddd; padding: 12px; background: #fff; }
+.sidebar-section { margin-bottom: 16px; }
+.sidebar-section.sticky-filter {
+  position: sticky; top: 0; z-index: 5; background: #fff;
+  padding-bottom: 10px; border-bottom: 1px solid #eee;
+}
+.sidebar-section h3 { font-size: 13px; color: #666; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+#categoryTree { list-style: none; }
+#categoryTree li {
+  padding: 6px 10px; border-radius: 4px; cursor: pointer;
+  font-size: 13px; display: flex; justify-content: space-between; align-items: center;
+}
+#categoryTree li:hover { background: #ecf0f1; }
+#categoryTree li.active { background: #3498db; color: #fff; }
+#categoryTree li .badge {
+  background: #e0e0e0; padding: 1px 8px; border-radius: 10px; font-size: 11px; color: #555;
+}
+#categoryTree li.active .badge { background: rgba(255,255,255,0.3); color: #fff; }
+#categoryTree li.sub { padding-left: 24px; font-size: 12px; color: #555; }
+#categoryTree li.sub.active { color: #fff; }
+#categoryTree li.modified { background: #e2e5e9; color: #777; }
+#categoryTree li.modified.active { background: #5d6d7e; color: #fff; }
+.row-index { color: #95a5a6; font-weight: 700; margin-right: 6px; }
+#categoryTree li.active .row-index, #categoryTree li.modified.active .row-index { color: rgba(255,255,255,0.85); }
+#searchInput {
+  width: 100%; padding: 6px 10px; border: 1px solid #ddd;
+  border-radius: 4px; font-size: 13px; margin-bottom: 8px;
+}
+#statusFilter {
+  width: 100%; padding: 6px 10px; border: 1px solid #ddd;
+  border-radius: 4px; font-size: 13px;
+}
+.mode-toggle {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  border: 1px solid #3498db; border-radius: 6px; overflow: hidden; margin-bottom: 8px;
+}
+.mode-toggle button {
+  padding: 7px 8px; border: none; background: #fff; color: #2874a6;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.mode-toggle button + button { border-left: 1px solid #3498db; }
+.mode-toggle button.active { background: #3498db; color: #fff; }
+.btn-export {
+  width: 100%; padding: 8px; background: #e67e22; color: #fff;
+  border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; margin-bottom: 10px;
+}
+.btn-export:hover:not(:disabled) { background: #d35400; }
+.btn-export:disabled { background: #bdc3c7; cursor: not-allowed; }
+.progress-info { font-size: 12px; color: #666; }
+.progress-bar { height: 4px; background: #e0e0e0; border-radius: 2px; margin-top: 4px; }
+.progress-fill { height: 100%; background: #e74c3c; border-radius: 2px; width: 0; transition: width 0.3s; }
+
+/* Content */
+#content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#contentHeader { padding: 12px 16px 0; font-size: 15px; font-weight: 600; color: #2c3e50; flex-shrink: 0; }
+#contentColumns { display: flex; flex: 1; min-height: 0; }
+#contentLeft { flex: 1; overflow-y: auto; padding: 12px 16px; min-width: 0; }
+#contentRight {
+  flex: 1; overflow-y: auto;
+  border-left: 1px solid #ddd; padding: 12px; background: #fafafa; min-width: 0;
+}
+#contentRight.hidden { display: none !important; }
+#sampleHeader {
+  font-size: 14px; font-weight: 600; color: #2c3e50;
+  margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e0e0e0;
+}
+#sampleGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.sample-card { border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden; background: #fff; }
+.sample-card img { width: 100%; height: 120px; object-fit: contain; background: #111; display: block; }
+.sample-card .sample-name { padding: 4px 6px; font-size: 10px; color: #888; text-align: center; }
+.sample-empty { color: #999; font-size: 13px; padding: 20px; text-align: center; }
+
+/* Group */
+.group-section { margin-bottom: 20px; }
+.group-header {
+  background: #34495e; color: #fff; padding: 10px 16px;
+  border-radius: 6px 6px 0 0; display: flex; justify-content: space-between;
+  align-items: center; cursor: pointer;
+}
+.group-header h3 { font-size: 14px; font-weight: 600; }
+.group-header .group-badge { font-size: 12px; opacity: 0.8; }
+.group-header .group-meta { font-size: 11px; opacity: 0.7; }
+.count-chip {
+  display: inline-block; margin-left: 6px; padding: 2px 7px;
+  border-radius: 10px; font-size: 11px; font-weight: 700;
+}
+.count-chip.match { background: #d5f5e3; color: #1e8449; }
+.count-chip.missing { background: #fdebd0; color: #b03a2e; }
+.group-body {
+  background: #fff; border: 1px solid #ddd; border-top: none;
+  border-radius: 0 0 6px 6px; padding: 12px;
+}
+.group-body.collapsed { display: none; }
+.items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+
+/* Item Card */
+.item-card {
+  border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;
+  background: #fafafa; transition: border-color 0.2s;
+}
+.item-card.error { border: 2px solid #e74c3c; background: #fdf0f0; }
+.item-card.delete-target { border: 3px solid #e74c3c; background: #ffe8e8; }
+.item-card.delete-target .item-meta { background: #fff0f0; }
+.item-card.deleted-mark { filter: grayscale(0.7); opacity: 0.48; background: #e5e7eb; border-color: #6c757d; }
+.item-card.deleted-mark .item-meta { background: #dfe3e8; }
+.item-card img, .item-card canvas {
+  width: 100%; height: 150px; object-fit: contain; background: #111; display: block;
+}
+.item-meta { padding: 8px; font-size: 11px; color: #555; line-height: 1.6; }
+.item-meta .sid { font-weight: 600; color: #2c3e50; }
+.item-meta .src { color: #888; word-break: break-all; font-size: 10px; }
+.item-meta .category-edit { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.item-meta .category-edit label { font-size: 10px; color: #888; white-space: nowrap; }
+.item-meta .category-edit select {
+  flex: 1; padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px;
+  font-size: 11px; min-width: 0; background: #fff; cursor: pointer;
+}
+.item-meta .barcode-edit { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.item-meta .barcode-edit label { font-size: 10px; color: #888; white-space: nowrap; }
+.item-meta .barcode-edit input {
+  flex: 1; padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px; font-size: 11px; min-width: 0;
+}
+.item-meta .barcode-edit input.saved { border-color: #27ae60; background: #eafaf1; }
+.item-meta .chk { margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+.item-meta .chk input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; }
+.item-meta .chk label { cursor: pointer; color: #c0392b; font-weight: 600; }
+.delete-info {
+  margin-top: 10px; padding: 10px 12px; border: 1px solid #f1b0b7;
+  background: #fff5f5; border-radius: 4px; color: #7f1d1d; font-size: 13px;
+  line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+}
+.delete-info strong { display: block; margin-bottom: 4px; color: #c0392b; }
+.add-info {
+  margin-top: 10px; padding: 10px 12px; border: 1px solid #9cc7f2;
+  background: #f3f8ff; border-radius: 4px; color: #17406f; font-size: 13px;
+  line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+}
+.add-info strong { display: block; margin-bottom: 4px; color: #2368a2; }
+.truth-sample-section { margin-bottom: 16px; }
+.truth-sample-title { font-size: 13px; font-weight: 700; color: #2c3e50; margin-bottom: 6px; }
+.truth-total-label { font-size: 22px; line-height: 1.1; color: #e67e22; font-weight: 900; margin-bottom: 5px; }
+.truth-total-count { font-size: 40px; line-height: 1.05; color: #2c3e50; font-weight: 900; }
+.truth-total-count span { font-size: 18px; color: #7f8c8d; margin-left: 4px; font-weight: 800; }
+.group-total-label { font-size: 18px; line-height: 1.1; color: #f1c40f; font-weight: 900; margin-top: 6px; }
+.group-total-count { font-size: 34px; line-height: 1.05; color: #fff; font-weight: 900; }
+.group-total-count span { font-size: 16px; color: rgba(255,255,255,0.75); margin-left: 4px; font-weight: 800; }
+.group-title-box { display: flex; flex-direction: column; align-items: flex-start; }
+.group-header-actions { display: flex; align-items: center; gap: 8px; }
+.truth-sample-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.truth-sample-section.match { border-left: 4px solid #27ae60; padding-left: 8px; }
+.truth-sample-section.missing { border-left: 4px solid #e67e22; padding-left: 8px; }
+.truth-sample-section.partial { border-left: 4px solid #f1c40f; padding-left: 8px; }
+.qty-badge {
+  display: inline-block; margin-left: 6px; padding: 2px 8px;
+  border-radius: 999px; font-size: 11px; font-weight: 800;
+}
+.qty-badge.q1 { background: #e8f4fd; color: #21618c; }
+.qty-badge.q2 { background: #eafaf1; color: #1e8449; }
+.qty-badge.q3 { background: #fff3cd; color: #946200; }
+.qty-badge.q4 { background: #fdebd0; color: #af601a; }
+.qty-badge.q5 { background: #f5eef8; color: #7d3c98; }
+.order-mismatch-info {
+  margin-bottom: 10px; padding: 9px 10px; background: #fff1f1;
+  border: 1px solid #f5b7b1; border-radius: 4px; color: #922b21;
+  font-size: 13px; line-height: 1.5; font-weight: 700; white-space: pre-wrap;
+}
+.order-mismatch-info strong { display: block; margin-bottom: 4px; color: #c0392b; }
+.truth-sample-card { border: 1px solid #d4e6fb; border-radius: 4px; overflow: hidden; background: #fff; }
+.truth-sample-card img { width: 100%; height: 110px; object-fit: contain; background: #111; display: block; }
+.truth-sample-empty { font-size: 12px; color: #777; padding: 8px; background: #fff; border: 1px solid #eee; border-radius: 4px; }
+.item-card.group-selected { outline: 3px solid #2ecc71; outline-offset: -3px; }
+.item-meta .error-edit,
+.item-meta .group-pick { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.item-meta .error-edit label,
+.item-meta .group-pick label { font-size: 10px; color: #888; white-space: nowrap; }
+.item-meta .error-edit { align-items: flex-start; flex-direction: column; }
+.item-meta .error-buttons {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px; width: 100%;
+}
+.item-meta .error-buttons button {
+  border: 1px solid #d4d8dd; background: #fff; border-radius: 4px;
+  padding: 4px 5px; font-size: 10px; font-weight: 700; color: #34495e;
+  cursor: pointer; min-height: 24px;
+}
+.item-meta .error-buttons button:hover { border-color: #3498db; background: #eef7ff; }
+.item-meta .error-buttons button.active { border-color: #e74c3c; background: #fdecea; color: #b03a2e; }
+.restore-btn {
+  margin-top: 5px; width: 100%; border: 1px solid #566573; background: #fff;
+  border-radius: 4px; padding: 5px; font-size: 11px; font-weight: 800;
+  color: #2c3e50; cursor: pointer;
+}
+.restore-btn:hover { background: #eef2f5; }
+.item-meta .group-pick input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; }
+.item-meta .group-pick label { cursor: pointer; color: #1f7a46; font-weight: 700; }
+.item-meta .error-note {
+  margin-top: 4px; color: #a94442; background: #fff5f5;
+  border-radius: 3px; padding: 2px 4px; word-break: break-word;
+}
+#groupToolbar {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+  z-index: 1200; display: flex; align-items: center; gap: 10px;
+  background: #24313d; color: #fff; padding: 10px 14px; border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25); font-size: 13px;
+}
+#groupToolbar.hidden { display: none !important; }
+#groupToolbar button {
+  border: none; border-radius: 4px; padding: 6px 12px;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+}
+#btnGroupConfirm { background: #27ae60; color: #fff; }
+#btnGroupCancel { background: #ecf0f1; color: #2c3e50; }
+.source-image-panel {
+  margin-top: 10px; padding: 10px 12px; border: 1px solid #ddd;
+  background: #fff; border-radius: 4px;
+}
+.source-image-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.source-image-header strong { color: #2c3e50; font-size: 13px; }
+.mask-toggle-btn {
+  border: 1px solid #3498db; background: #fff; color: #2874a6;
+  border-radius: 4px; padding: 5px 9px; font-size: 12px; font-weight: 800;
+  cursor: pointer;
+}
+.mask-toggle-btn.active { background: #3498db; color: #fff; }
+.source-image-panel img {
+  display: block; width: 100%; max-height: 520px; object-fit: contain;
+  background: #111; border-radius: 4px;
+}
+.load-more-btn {
+  display: block; margin: 12px auto; padding: 8px 24px;
+  background: #3498db; color: #fff; border: none; border-radius: 6px;
+  cursor: pointer; font-size: 13px;
+}
+.load-more-btn:hover { background: #2980b9; }
+
+/* Loading overlay */
+#loadingOverlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); display: flex; align-items: center;
+  justify-content: center; z-index: 2000;
+}
+#loadingOverlay.hidden { display: none !important; }
+#loadingOverlay .loading-box {
+  background: #fff; border-radius: 10px; padding: 30px 40px; text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+#loadingOverlay .loading-box h3 { margin-bottom: 10px; }
+#loadingProgress { font-size: 13px; color: #666; }
+
+body {
+  background: linear-gradient(135deg, #faf8f5 0%, #f4f3bd 100%);
+  color: #34312f;
+}
+#header {
+  background: #aec4ca;
+  color: #24313d;
+  border-bottom: 1px solid #9bb3ba;
+}
+#header h1,
+#contentHeader,
+#sampleHeader,
+.source-image-header strong,
+.truth-sample-title,
+.item-meta .sid {
+  color: #34312f;
+}
+#header h1 span { color: #536f77 !important; }
+.header-controls label,
+#loadStatus,
+#errorCsvStatus,
+#sampleStatus {
+  color: #425d65 !important;
+}
+#sidebar,
+#sidebarBottom,
+.sticky-filter,
+#contentRight,
+.group-body,
+.item-card,
+.sample-card,
+.truth-sample-card,
+.source-image-block,
+#loadingOverlay .loading-box {
+  background: rgba(255,255,255,0.90);
+  border-color: #d9d5d2;
+}
+#sidebar { border-right-color: #d9d5d2; }
+#contentRight { border-left-color: #d9d5d2; }
+.group-header,
+#groupToolbar {
+  background: #aec4ca;
+  color: #24313d;
+}
+.sidebar-section h3,
+.truth-total-label,
+.group-total-label {
+  color: #536f77;
+}
+#categoryTree li:hover { background: #d9e9e3; }
+#categoryTree li.active,
+#categoryTree li.modified.active {
+  background: #aec4ca;
+  color: #24313d;
+}
+#categoryTree li.modified {
+  background: #d9d5d2;
+  color: #6c6662;
+}
+#searchInput,
+#statusFilter,
+.mode-toggle,
+.mode-toggle button,
+.item-meta select,
+.item-meta input,
+.item-meta .error-buttons button,
+.restore-btn {
+  border-color: #d9d5d2;
+}
+.mode-toggle,
+.mode-toggle button + button { border-color: #aec4ca; }
+.mode-toggle button.active,
+.mask-toggle-btn.active,
+.load-more-btn,
+.btn-dataset,
+.btn-sample,
+.btn-save,
+.btn-export,
+#btnGroupConfirm {
+  background: #fcd19e;
+  color: #34312f;
+}
+.btn-dataset:hover,
+.btn-sample:hover,
+.btn-save:hover,
+.btn-export:hover:not(:disabled),
+.load-more-btn:hover {
+  background: #fcd19e;
+}
+.btn-export:disabled {
+  background: #d9d5d2;
+  color: #6c6662;
+}
+.progress-fill { background: #fcd19e; }
+.item-card.error,
+.item-card.delete-target {
+  border-color: #aec4ca;
+  background: #fff7df;
+}
+.item-meta .error-buttons button:hover {
+  border-color: #aec4ca;
+  background: #f4fbf8;
+}
+.item-meta .error-buttons button.active {
+  border-color: #aec4ca;
+  background: #fff7df;
+  color: #65513a;
+}
+.delete-info,
+.order-mismatch-info,
+.error-note {
+  background: #fff7df;
+  border-color: #aec4ca;
+  color: #65513a;
+}
+.add-info {
+  background: #f4fbf8;
+  border-color: #d9e9e3;
+  color: #425d65;
+}
+.mask-toggle-btn {
+  border-color: #aec4ca;
+  color: #536f77;
+}
+
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header id="header">
+  <h1>Mask Review Tool</h1>
+  <div class="header-controls">
+    <label>Dataset:</label>
+    <input type="file" id="datasetInput" webkitdirectory>
+    <button class="btn-dataset" onclick="document.getElementById('datasetInput').click()">Open Folder</button>
+    <span id="loadStatus"></span>
+  </div>
+  <div class="header-controls">
+    <label>Error:</label>
+    <input type="file" id="errorCsvInput" accept=".csv,.xlsx,.xls">
+    <button class="btn-dataset" onclick="document.getElementById('errorCsvInput').click()">Open CSV</button>
+    <span id="errorCsvStatus" style="font-size:12px;color:#ecf0f1;"></span>
+  </div>
+  <div class="header-controls">
+    <label>Samples:</label>
+    <input type="file" id="sampleInput" webkitdirectory>
+    <button class="btn-sample" onclick="document.getElementById('sampleInput').click()">Open Folder</button>
+    <span id="sampleStatus" style="font-size:12px;color:#ecf0f1;"></span>
+  </div>
+  <div class="header-controls">
+    <button class="btn-save" onclick="downloadModifiedJSON()" title="Save modified COCO JSON">Save JSON</button>
+  </div>
+</header>
+
+<!-- Main Layout -->
+<div id="mainLayout" class="hidden">
+  <aside id="sidebar">
+    <div id="sidebarScroll">
+      <div class="sidebar-section sticky-filter">
+        <h3>Filter</h3>
+        <div id="viewModeToggle" class="mode-toggle">
+          <button type="button" data-mode="barcode">아이템별</button>
+          <button type="button" data-mode="order" class="active">주문번호별</button>
+        </div>
+        <input type="text" id="searchInput" placeholder="Search barcode / filename...">
+        <select id="statusFilter">
+          <option value="all">All</option>
+          <option value="has_error">Has Error</option>
+          <option value="no_error">No Error</option>
+        </select>
+      </div>
+      <div class="sidebar-section">
+        <h3>Categories</h3>
+        <ul id="categoryTree"></ul>
+      </div>
+    </div>
+    <div id="sidebarBottom">
+      <div class="sidebar-section">
+        <h3>Actions</h3>
+        <button id="btnExport" class="btn-export" onclick="exportXlsx()" disabled>Export XLSX</button>
+        <div class="progress-info">
+          <span id="errorCount">0</span> / <span id="totalCount">0</span> errors checked
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <main id="content">
+    <div id="contentHeader"></div>
+    <div id="contentColumns">
+      <div id="contentLeft"><div id="groupContainer"></div></div>
+      <div id="contentRight" class="hidden">
+        <div id="sampleHeader"></div>
+        <div id="sampleGrid"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="hidden">
+  <div class="loading-box">
+    <h3>Loading Dataset...</h3>
+    <div id="loadingProgress">Parsing JSON...</div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// State
+// ══════════════════════════════════════════
+let cocoData = null;           // raw COCO JSON
+let images = {};               // id -> {file_name, width, height}
+let annotations = {};          // id -> annotation
+let categories = {};           // id -> name
+let catNameToId = {};
+let byCategory = {};           // catName -> [annId, ...]
+let byBarcode = {};            // barcodeKey -> [annId, ...]
+let imageFrameIndex = {};      // imageId -> 0-based frame
+let imageFileMap = {};         // fileName -> File object
+let sampleFileMap = {};        // barcode -> [File, ...]
+let correctionInfoByOrder = {}; // orderNo -> add/delete guidance text
+let cropCache = {};            // annId -> dataURL
+let imageCache = {};           // fileName -> HTMLImageElement
+let cropQueue = [];
+let cropRunning = 0;
+const MAX_CONCURRENT = 2;
+const cropObserver = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    cropObserver.unobserve(entry.target);
+    const annId = Number(entry.target.dataset.annId);
+    const placeholder = entry.target.querySelector('.crop-placeholder');
+    if (!annId || !placeholder) continue;
+    enqueueCrop(annId, (dataURL) => {
+      if (dataURL) {
+        const item = annotations[annId];
+        const catName = item ? (categories[item.category_id] || 'item') : 'item';
+        const img = document.createElement('img');
+        img.src = dataURL;
+        img.alt = catName + ' ' + annId;
+        if (entry.target.contains(placeholder)) entry.target.replaceChild(img, placeholder);
+      } else {
+        placeholder.textContent = '[No crop]';
+      }
+    });
+  }
+}, { rootMargin: '600px 0px' });
+
+let structure = {};
+let allCategories = [];
+let activeCategory = null;
+let activeGroup = null;
+let viewMode = 'order';
+let errorSet = new Set();
+let errorRecords = new Map();
+let groupSelection = null;
+let deletedAnnotations = {};
+let deletedAnnotationIds = new Set();
+let modifiedOrderNos = new Set();
+let groupBackups = {};
+let totalAnnotations = 0;
+let visitedSet = new Set();
+let dirty = false;
+
+// ══════════════════════════════════════════
+// RLE Decoder (COCO compressed RLE → mask)
+// ══════════════════════════════════════════
+function decodeCompressedRLE(countsStr) {
+  // COCO compressed RLE: ASCII string → run-length array
+  const cnts = [];
+  let p = 0;
+  while (p < countsStr.length) {
+    let x = 0, k = 0, more = true, c = 0;
+    while (more) {
+      c = countsStr.charCodeAt(p) - 48;
+      p++;
+      x |= (c & 0x1f) << (5 * k);
+      more = (c & 0x20) !== 0;
+      k++;
+    }
+    if (c & 0x10) x |= -1 << (5 * k);
+    if (cnts.length > 2) x += cnts[cnts.length - 2];
+    cnts.push(x);
+  }
+  return cnts;
+}
+
+function decodeMask(seg, h, w) {
+  let counts;
+  if (typeof seg.counts === 'string') {
+    counts = decodeCompressedRLE(seg.counts);
+  } else {
+    counts = seg.counts;
+  }
+
+  const mask = new Uint8Array(h * w);
+  let idx = 0;
+  let val = 0;
+  for (let i = 0; i < counts.length; i++) {
+    const run = counts[i];
+    for (let j = 0; j < run; j++) {
+      if (idx < mask.length) mask[idx++] = val;
+    }
+    val = 1 - val;
+  }
+
+  // COCO RLE is column-major, transpose to row-major
+  const result = new Uint8Array(h * w);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      result[y * w + x] = mask[x * h + y];
+    }
+  }
+  return result;
+}
+
+function encodeUncompressedRLE(rowMajorMask, h, w) {
+  const counts = [];
+  let last = 0;
+  let run = 0;
+  for (let x = 0; x < w; x++) {
+    for (let y = 0; y < h; y++) {
+      const val = rowMajorMask[y * w + x] ? 1 : 0;
+      if (val === last) {
+        run++;
+      } else {
+        counts.push(run);
+        run = 1;
+        last = val;
+      }
+    }
+  }
+  counts.push(run);
+  return { size: [h, w], counts };
+}
+
+function maskStats(mask, h, w) {
+  let area = 0;
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!mask[y * w + x]) continue;
+      area++;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+  return {
+    area,
+    bbox: area ? [minX, minY, maxX - minX + 1, maxY - minY + 1] : [0, 0, 0, 0],
+  };
+}
+
+function getSegmentationBounds(seg, imgW, imgH) {
+  if (!seg) return null;
+
+  if (Array.isArray(seg)) {
+    let cmin = imgW, rmin = imgH, cmax = -1, rmax = -1;
+    for (const poly of seg) {
+      if (!Array.isArray(poly)) continue;
+      for (let i = 0; i < poly.length - 1; i += 2) {
+        const x = poly[i];
+        const y = poly[i + 1];
+        if (x < cmin) cmin = x;
+        if (x > cmax) cmax = x;
+        if (y < rmin) rmin = y;
+        if (y > rmax) rmax = y;
+      }
+    }
+    if (rmin <= rmax && cmin <= cmax) {
+      return {
+        cmin: Math.floor(cmin),
+        rmin: Math.floor(rmin),
+        cmax: Math.ceil(cmax),
+        rmax: Math.ceil(rmax)
+      };
+    }
+    return null;
+  }
+
+  if (typeof seg === 'object' && seg.counts) {
+    const maskH = (seg.size && seg.size[0]) || imgH;
+    const maskW = (seg.size && seg.size[1]) || imgW;
+    const mask = decodeMask(seg, maskH, maskW);
+    let rmin = maskH, rmax = -1, cmin = maskW, cmax = -1;
+    for (let y = 0; y < maskH; y++) {
+      for (let x = 0; x < maskW; x++) {
+        if (mask[y * maskW + x]) {
+          if (y < rmin) rmin = y;
+          if (y > rmax) rmax = y;
+          if (x < cmin) cmin = x;
+          if (x > cmax) cmax = x;
+        }
+      }
+    }
+    if (rmin <= rmax && cmin <= cmax) {
+      return { cmin, rmin, cmax, rmax, mask, maskW, maskH };
+    }
+  }
+
+  return null;
+}
+
+function applySegmentationMask(ctx, seg, cropX, cropY, cropW, cropH, imgW, imgH) {
+  if (!seg) return false;
+
+  const maskCanvas = document.createElement('canvas');
+  maskCanvas.width = cropW;
+  maskCanvas.height = cropH;
+  const maskCtx = maskCanvas.getContext('2d');
+  maskCtx.fillStyle = '#fff';
+
+  if (Array.isArray(seg)) {
+    maskCtx.beginPath();
+    let hasPath = false;
+    for (const poly of seg) {
+      if (!Array.isArray(poly) || poly.length < 6) continue;
+      maskCtx.moveTo(poly[0] - cropX, poly[1] - cropY);
+      for (let i = 2; i < poly.length - 1; i += 2) {
+        maskCtx.lineTo(poly[i] - cropX, poly[i + 1] - cropY);
+      }
+      maskCtx.closePath();
+      hasPath = true;
+    }
+    if (!hasPath) return false;
+    maskCtx.fill('evenodd');
+  } else if (typeof seg === 'object' && seg.counts) {
+    const maskH = (seg.size && seg.size[0]) || imgH;
+    const maskW = (seg.size && seg.size[1]) || imgW;
+    const mask = decodeMask(seg, maskH, maskW);
+    const imageData = maskCtx.createImageData(cropW, cropH);
+    for (let y = 0; y < cropH; y++) {
+      const srcY = cropY + y;
+      if (srcY < 0 || srcY >= maskH) continue;
+      for (let x = 0; x < cropW; x++) {
+        const srcX = cropX + x;
+        if (srcX < 0 || srcX >= maskW) continue;
+        if (!mask[srcY * maskW + srcX]) continue;
+        const idx = (y * cropW + x) * 4;
+        imageData.data[idx] = 255;
+        imageData.data[idx + 1] = 255;
+        imageData.data[idx + 2] = 255;
+        imageData.data[idx + 3] = 255;
+      }
+    }
+    maskCtx.putImageData(imageData, 0, 0);
+  } else {
+    return false;
+  }
+
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.drawImage(maskCanvas, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  return true;
+}
+
+// ══════════════════════════════════════════
+// Image Loading (cached)
+// ══════════════════════════════════════════
+const _imageLoadPromises = {}; // prevent duplicate parallel loads
+
+function getImage(fileName) {
+  if (imageCache[fileName]) return Promise.resolve(imageCache[fileName]);
+  if (_imageLoadPromises[fileName]) return _imageLoadPromises[fileName];
+
+  const file = imageFileMap[fileName];
+  if (!file) return Promise.resolve(null);
+
+  _imageLoadPromises[fileName] = new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      imageCache[fileName] = img;
+      delete _imageLoadPromises[fileName];
+      resolve(img);
+    };
+    img.onerror = () => { delete _imageLoadPromises[fileName]; reject(new Error('load failed')); };
+    img.src = url;
+  });
+  return _imageLoadPromises[fileName];
+}
+
+// ══════════════════════════════════════════
+// Crop with Mask (Canvas API)
+// ══════════════════════════════════════════
+async function getCropDataURL(annId) {
+  if (cropCache[annId]) return cropCache[annId];
+
+  const ann = annotations[annId] || deletedAnnotations[annId];
+  if (!ann) return null;
+
+  const imgInfo = images[ann.image_id];
+  if (!imgInfo) return null;
+
+  try {
+    const img = await getImage(imgInfo.file_name);
+    if (!img) return null;
+    const imgH = img.naturalHeight || img.height;
+    const imgW = img.naturalWidth || img.width;
+
+    let rmin, rmax, cmin, cmax;
+    const seg = ann.segmentation;
+    const segBounds = getSegmentationBounds(seg, imgW, imgH);
+    const bbox = ann.bbox; // [x, y, width, height]
+    if (segBounds) {
+      cmin = segBounds.cmin;
+      rmin = segBounds.rmin;
+      cmax = segBounds.cmax;
+      rmax = segBounds.rmax;
+    } else if (bbox && bbox.length === 4) {
+      cmin = Math.floor(bbox[0]);
+      rmin = Math.floor(bbox[1]);
+      cmax = Math.ceil(bbox[0] + bbox[2]);
+      rmax = Math.ceil(bbox[1] + bbox[3]);
+    } else {
+      return null;
+    }
+    if (rmin > rmax || cmin > cmax) return null;
+
+    // Padding
+    const pad = 5;
+    rmin = Math.max(0, rmin - pad);
+    rmax = Math.min(imgH - 1, rmax + pad);
+    cmin = Math.max(0, cmin - pad);
+    cmax = Math.min(imgW - 1, cmax + pad);
+
+    const cropW = cmax - cmin + 1;
+    const cropH = rmax - rmin + 1;
+
+    // Draw ONLY crop region to canvas (not full image)
+    const canvas = document.createElement('canvas');
+    canvas.width = cropW; canvas.height = cropH;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, cmin, rmin, cropW, cropH, 0, 0, cropW, cropH);
+    applySegmentationMask(ctx, seg, cmin, rmin, cropW, cropH, imgW, imgH);
+
+    const dataURL = canvas.toDataURL('image/png');
+
+    // Cache (limit 500)
+    if (Object.keys(cropCache).length >= 500) {
+      delete cropCache[Object.keys(cropCache)[0]];
+    }
+    cropCache[annId] = dataURL;
+    return dataURL;
+  } catch (e) {
+    console.error('Crop error for ann', annId, e);
+    return null;
+  }
+}
+
+// ══════════════════════════════════════════
+// Crop Queue (concurrency limiter)
+// ══════════════════════════════════════════
+function enqueueCrop(annId, callback) {
+  cropQueue.push({ annId, callback });
+  drainCropQueue();
+}
+
+function drainCropQueue() {
+  while (cropQueue.length > 0 && cropRunning < MAX_CONCURRENT) {
+    cropRunning++;
+    const { annId, callback } = cropQueue.shift();
+    getCropDataURL(annId).then(callback).finally(() => {
+      cropRunning--;
+      drainCropQueue();
+    });
+  }
+}
+
+// ══════════════════════════════════════════
+// Dataset Loading
+// ══════════════════════════════════════════
+document.getElementById('datasetInput').addEventListener('change', async (e) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  document.getElementById('loadingProgress').textContent = 'Scanning files...';
+
+  // Small delay to let UI render
+  await new Promise(r => setTimeout(r, 50));
+
+  try {
+    // Find annotation JSON
+    let jsonFile = null;
+    imageFileMap = {};
+
+    for (const f of files) {
+      const rel = f.webkitRelativePath.replace(/\\/g, '/');
+      const parts = rel.split('/');
+
+      if (parts.length >= 3 && parts[parts.length - 2] === 'annotation' &&
+          f.name.toLowerCase().endsWith('.json') && !f.name.endsWith('.bak')) {
+        if (!jsonFile) jsonFile = f;
+      }
+
+      if (/\.(jpg|jpeg|png)$/i.test(f.name)) {
+        imageFileMap[f.name] = f;
+      }
+    }
+
+    if (!jsonFile) {
+      alert('annotation/*.json file not found in this folder.');
+      return;
+    }
+
+    document.getElementById('loadingProgress').textContent = 'Parsing JSON...';
+    await new Promise(r => setTimeout(r, 20));
+
+    const text = await jsonFile.text();
+    cocoData = JSON.parse(text);
+
+    // Parse categories
+    categories = {};
+    catNameToId = {};
+    for (const cat of (cocoData.categories || [])) {
+      categories[cat.id] = cat.name;
+      catNameToId[cat.name] = cat.id;
+    }
+
+    // Parse images
+    images = {};
+    imageFrameIndex = {};
+    (cocoData.images || []).forEach((img, idx) => {
+      images[img.id] = { file_name: img.file_name, width: img.width, height: img.height };
+      imageFrameIndex[img.id] = idx;
+    });
+
+    // Parse annotations
+    annotations = {};
+    byCategory = {};
+    byBarcode = {};
+    cropCache = {};
+    imageCache = {};
+    cropQueue.length = 0;
+
+    document.getElementById('loadingProgress').textContent = 'Indexing annotations...';
+    await new Promise(r => setTimeout(r, 20));
+
+    for (const ann of (cocoData.annotations || [])) {
+      annotations[ann.id] = ann;
+      const catName = categories[ann.category_id] || 'unknown';
+
+      if (!byCategory[catName]) byCategory[catName] = [];
+      byCategory[catName].push(ann.id);
+
+      if (catName === 'item') {
+        const barcode = (ann.attributes && ann.attributes.barcode) || '';
+        const key = barcode || '__no_barcode__';
+        if (!byBarcode[key]) byBarcode[key] = [];
+        byBarcode[key].push(ann.id);
+      }
+    }
+
+    // Build structure
+    buildStructure();
+
+    // Prepare categories list
+    allCategories = Object.entries(categories)
+      .map(([id, name]) => ({ id: parseInt(id), name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Reset state
+    errorSet.clear();
+    errorRecords.clear();
+    groupSelection = null;
+    deletedAnnotations = {};
+    deletedAnnotationIds.clear();
+    modifiedOrderNos.clear();
+    groupBackups = {};
+    visitedSet.clear();
+    totalAnnotations = 0;
+    dirty = false;
+    for (const cat in structure) totalAnnotations += structure[cat].total;
+
+    // Show UI
+    document.getElementById('mainLayout').classList.remove('hidden');
+    document.getElementById('loadStatus').textContent =
+      totalAnnotations.toLocaleString() + ' annotations loaded';
+
+    renderSidebar();
+    selectDefaultCategory();
+    updateProgress();
+
+  } catch (err) {
+    alert('Load error: ' + err.message);
+    console.error(err);
+  } finally {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }
+});
+
+function buildStructure() {
+  byCategory = {};
+  byBarcode = {};
+  for (const ann of Object.values(annotations)) {
+    const catName = categories[ann.category_id] || 'unknown';
+    if (!byCategory[catName]) byCategory[catName] = [];
+    byCategory[catName].push(ann.id);
+    if (catName === 'item') {
+      const barcode = (ann.attributes && ann.attributes.barcode) || '';
+      const key = barcode || '__no_barcode__';
+      if (!byBarcode[key]) byBarcode[key] = [];
+      byBarcode[key].push(ann.id);
+    }
+  }
+
+  structure = {};
+  for (const catName in byCategory) {
+    const annIds = byCategory[catName];
+    if (catName === 'roi') continue;
+
+    if (catName === 'item') {
+      const groups = {};
+      if (viewMode === 'order') {
+        for (const aid of annIds) {
+          const ann = annotations[aid];
+          const img = images[ann.image_id] || {};
+          const attrs = ann.attributes || {};
+          const orderNo = getOrderNoFromFileName(img.file_name || '') || attrs.shipment_id || '(order none)';
+          if (!groups[orderNo]) groups[orderNo] = [];
+          groups[orderNo].push({
+            ann_id: aid,
+            barcode: attrs.barcode || '',
+            shipment_id: attrs.shipment_id || '',
+            image_file: img.file_name || '',
+            category: catName,
+          });
+        }
+        const sortedGroups = {};
+        Object.keys(groups).sort(compareOrderNo).forEach(key => {
+          sortedGroups[key] = groups[key].sort((a, b) =>
+            (a.barcode || '').localeCompare(b.barcode || '') ||
+            a.image_file.localeCompare(b.image_file) ||
+            a.ann_id - b.ann_id
+          );
+        });
+        structure[catName] = { group_by: 'order', groups: sortedGroups, total: annIds.length };
+      } else {
+        const sortedBarcodes = Object.entries(byBarcode)
+          .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+
+        for (const [barcodeKey, bAnnIds] of sortedBarcodes) {
+          const displayKey = barcodeKey === '__no_barcode__' ? '(barcode none)' : barcodeKey;
+          const items = bAnnIds.map(aid => {
+            const ann = annotations[aid];
+            const img = images[ann.image_id] || {};
+            const attrs = ann.attributes || {};
+            return {
+              ann_id: aid,
+              barcode: attrs.barcode || '',
+              shipment_id: attrs.shipment_id || '',
+              image_file: img.file_name || '',
+              category: catName,
+            };
+          });
+          groups[displayKey] = items;
+        }
+        structure[catName] = { group_by: 'barcode', groups, total: annIds.length };
+      }
+    } else {
+      const items = annIds.map(aid => {
+        const ann = annotations[aid];
+        const img = images[ann.image_id] || {};
+        return {
+          ann_id: aid, barcode: '', shipment_id: '',
+          image_file: img.file_name || '', category: catName,
+        };
+      });
+      structure[catName] = { group_by: 'all', groups: { 'All': items }, total: annIds.length };
+    }
+  }
+}
+
+function getOrderNoFromFileName(fileName) {
+  if (!fileName) return '';
+  const base = fileName.split('/').pop().replace(/\.[^.]+$/, '');
+  const parts = base.split('_');
+  return parts[parts.length - 1] || '';
+}
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[ch]));
+}
+
+function compareOrderNo(a, b) {
+  const aNum = /^\d+$/.test(a);
+  const bNum = /^\d+$/.test(b);
+  if (aNum && bNum) {
+    if (a.length !== b.length) return a.length - b.length;
+    return a.localeCompare(b);
+  }
+  return a.localeCompare(b, undefined, { numeric: true });
+}
+
+function attachSampleImage(img, file) {
+  img.loading = 'lazy';
+  const url = URL.createObjectURL(file);
+  img.onload = () => URL.revokeObjectURL(url);
+  img.src = url;
+}
+
+function selectDefaultCategory() {
+  if (structure.item && structure.item.groups) {
+    const firstGroup = Object.keys(structure.item.groups)[0];
+    if (firstGroup) {
+      selectCategory('item', firstGroup);
+      return;
+    }
+  }
+  const cats = Object.keys(structure);
+  if (cats.length > 0) selectCategory(cats[0]);
+}
+
+// ══════════════════════════════════════════
+// Sample Images
+// ══════════════════════════════════════════
+document.getElementById('sampleInput').addEventListener('change', (e) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+
+  sampleFileMap = {};
+  for (const f of files) {
+    if (!/\.(jpg|jpeg|png)$/i.test(f.name)) continue;
+    const rel = f.webkitRelativePath.replace(/\\/g, '/');
+    const parts = rel.split('/');
+    // structure: rootFolder/barcode/image.jpg
+    if (parts.length >= 3) {
+      const barcode = parts[parts.length - 2];
+      if (!sampleFileMap[barcode]) sampleFileMap[barcode] = [];
+      sampleFileMap[barcode].push(f);
+    }
+  }
+
+  const count = Object.keys(sampleFileMap).length;
+  document.getElementById('sampleStatus').textContent = count + ' barcodes loaded';
+
+  // Refresh sample panel if visible
+  const info = activeCategory ? structure[activeCategory] : null;
+  if (activeCategory === 'item' && info && info.group_by === 'order' && activeGroup) {
+    loadTruthSamples(activeGroup);
+  } else if (activeCategory === 'item' && activeGroup && activeGroup !== '(barcode none)') {
+    loadSamples(activeGroup);
+  }
+});
+
+// ══════════════════════════════════════════
+// Error CSV/XLSX Loading
+// ══════════════════════════════════════════
+document.getElementById('errorCsvInput').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const status = document.getElementById('errorCsvStatus');
+  status.textContent = 'Loading...';
+
+  try {
+    const rows = await readErrorRows(file);
+    correctionInfoByOrder = buildCorrectionInfoMap(rows);
+    const count = Object.keys(correctionInfoByOrder).length;
+    status.textContent = count + ' orders loaded';
+    renderContent();
+    const info = activeCategory ? structure[activeCategory] : null;
+    if (activeCategory === 'item' && info && info.group_by === 'order' && activeGroup) {
+      loadTruthSamples(activeGroup);
+    }
+  } catch (err) {
+    console.error(err);
+    status.textContent = 'Load failed';
+    alert('Error file load failed: ' + err.message);
+  }
+});
+
+async function readErrorRows(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    const ExcelJS = await loadExcelJS();
+    const wb = new ExcelJS.Workbook();
+    const buffer = await file.arrayBuffer();
+    await wb.xlsx.load(buffer);
+
+    let bestRows = [];
+    wb.eachSheet(ws => {
+      const sheetRows = worksheetToObjects(ws);
+      if (sheetRows.some(r => r['주문번호'] && (r['삭제 필요'] || r['추가 필요']))) {
+        bestRows = sheetRows;
+      } else if (sheetRows.length > bestRows.length) {
+        bestRows = sheetRows;
+      }
+    });
+    return bestRows;
+  }
+
+  const text = await file.text();
+  return csvToObjects(text);
+}
+
+function worksheetToObjects(ws) {
+  let headerRowNumber = 1;
+  let headers = [];
+  ws.eachRow((row, rowNumber) => {
+    if (headers.length) return;
+    const values = row.values.slice(1).map(v => cellText(v));
+    if (values.includes('주문번호') && (values.includes('삭제 필요') || values.includes('추가 필요'))) {
+      headerRowNumber = rowNumber;
+      headers = values;
+    }
+  });
+  if (!headers.length) {
+    const first = ws.getRow(1);
+    headers = first.values.slice(1).map(v => cellText(v));
+  }
+
+  const rows = [];
+  for (let r = headerRowNumber + 1; r <= ws.rowCount; r++) {
+    const row = ws.getRow(r);
+    const obj = {};
+    let hasValue = false;
+    for (let c = 1; c <= headers.length; c++) {
+      const key = headers[c - 1];
+      if (!key) continue;
+      const value = cellText(row.getCell(c).value).trim();
+      if (value) hasValue = true;
+      obj[key] = value;
+    }
+    if (hasValue) rows.push(obj);
+  }
+  return rows;
+}
+
+function cellText(value) {
+  if (value == null) return '';
+  if (typeof value === 'object') {
+    if (value.text) return String(value.text);
+    if (value.result != null) return String(value.result);
+    if (Array.isArray(value.richText)) return value.richText.map(part => part.text || '').join('');
+    if (value.hyperlink && value.text) return String(value.text);
+  }
+  return String(value);
+}
+
+function csvToObjects(text) {
+  const rows = parseCsv(text);
+  if (rows.length === 0) return [];
+  const headers = rows[0].map(h => String(h || '').trim());
+  return rows.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { if (h) obj[h] = String(row[i] || '').trim(); });
+    return obj;
+  }).filter(row => Object.values(row).some(Boolean));
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [], field = '', quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"' && text[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (ch === '"') {
+        quoted = false;
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      quoted = true;
+    } else if (ch === ',') {
+      row.push(field);
+      field = '';
+    } else if (ch === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else if (ch !== '\r') {
+      field += ch;
+    }
+  }
+  row.push(field);
+  if (row.length > 1 || row[0]) rows.push(row);
+  return rows;
+}
+
+function buildCorrectionInfoMap(rows) {
+  const result = {};
+  for (const row of rows) {
+    const orderNo = String(row['주문번호'] || row['order_no'] || row['shipment_id'] || '').trim();
+    const deleteText = String(row['삭제 필요'] || row['delete_needed'] || row['delete'] || '').trim();
+    const addText = String(row['추가 필요'] || row['add_needed'] || row['add'] || '').trim();
+    if (!orderNo || (!deleteText && !addText)) continue;
+    if (!result[orderNo]) {
+      result[orderNo] = {
+        deleteText: '',
+        addText: '',
+        deleteBarcodes: new Set(),
+        deleteCounts: {},
+        addBarcodes: new Set(),
+        truthText: '',
+        truthBarcodes: new Set(),
+        truthCounts: {}
+      };
+    }
+    const truthText = String(row['정답 바코드/수량'] || row['truth'] || row['correct_barcodes'] || '').trim();
+    if (truthText) {
+      result[orderNo].truthText = result[orderNo].truthText ?
+        result[orderNo].truthText + '\n' + truthText : truthText;
+      extractBarcodeTokens(truthText).forEach(bc => result[orderNo].truthBarcodes.add(bc));
+      const counts = extractBarcodeCounts(truthText);
+      for (const [barcode, qty] of Object.entries(counts)) {
+        result[orderNo].truthCounts[barcode] = (result[orderNo].truthCounts[barcode] || 0) + qty;
+      }
+    }
+    if (deleteText) {
+      result[orderNo].deleteText = result[orderNo].deleteText ?
+        result[orderNo].deleteText + '\n' + deleteText : deleteText;
+      extractBarcodeTokens(deleteText).forEach(bc => result[orderNo].deleteBarcodes.add(bc));
+      const counts = extractBarcodeCounts(deleteText);
+      for (const [barcode, qty] of Object.entries(counts)) {
+        result[orderNo].deleteCounts[barcode] = (result[orderNo].deleteCounts[barcode] || 0) + qty;
+      }
+    }
+    if (addText) {
+      result[orderNo].addText = result[orderNo].addText ?
+        result[orderNo].addText + '\n' + addText : addText;
+      extractBarcodeTokens(addText).forEach(bc => result[orderNo].addBarcodes.add(bc));
+    }
+  }
+  Object.values(result).forEach(info => {
+    info.deleteBarcodes = [...info.deleteBarcodes];
+    info.addBarcodes = [...info.addBarcodes];
+    info.truthBarcodes = [...info.truthBarcodes];
+  });
+  return result;
+}
+
+function extractBarcodeTokens(text) {
+  const matches = String(text || '').match(/[A-Z]{1,3}\d{8,}|\d{8,}/g);
+  return matches ? [...new Set(matches)] : [];
+}
+
+function extractBarcodeCounts(text) {
+  const counts = {};
+  const pattern = /([A-Z]{1,3}\d{8,}|\d{8,})\s+(\d+)개/g;
+  let match;
+  while ((match = pattern.exec(String(text || ''))) !== null) {
+    counts[match[1]] = (counts[match[1]] || 0) + Number(match[2]);
+  }
+  if (Object.keys(counts).length === 0) {
+    extractBarcodeTokens(text).forEach(barcode => { counts[barcode] = 1; });
+  }
+  return counts;
+}
+
+// ══════════════════════════════════════════
+// Sidebar
+// ══════════════════════════════════════════
+function renderSidebar() {
+  const tree = document.getElementById('categoryTree');
+  tree.innerHTML = '';
+  let rowNo = 1;
+
+  for (const cat in structure) {
+    const info = structure[cat];
+    if (cat !== 'item') continue;
+
+    if (cat === 'item' && (info.group_by === 'barcode' || info.group_by === 'order')) {
+      for (const groupKey in info.groups) {
+        const subLi = document.createElement('li');
+        subLi.className = 'sub';
+        if (info.group_by === 'order' && modifiedOrderNos.has(groupKey)) subLi.classList.add('modified');
+        subLi.dataset.category = cat;
+        subLi.dataset.group = groupKey;
+        const count = info.groups[groupKey].length;
+        subLi.innerHTML = '<span><span class="row-index">' + rowNo++ + '.</span>' + escapeHtml(groupKey) + '</span>' +
+          ' <span class="badge">' + count + '</span>';
+        subLi.onclick = (e) => { e.stopPropagation(); selectCategory(cat, groupKey); };
+        tree.appendChild(subLi);
+      }
+    }
+  }
+}
+
+function selectCategory(cat, group) {
+  activeCategory = cat;
+  activeGroup = group || null;
+
+  const info = structure[cat];
+  document.querySelectorAll('#categoryTree li').forEach(li => {
+    li.classList.remove('active');
+    const liCat = li.dataset.category;
+    const liGroup = li.dataset.group;
+    if (liCat === cat) {
+      if (!group && !liGroup) li.classList.add('active');
+      if (group && liGroup === group) li.classList.add('active');
+    }
+  });
+
+  renderContent();
+
+  const rightPanel = document.getElementById('contentRight');
+  if (cat === 'item' && info && info.group_by === 'order' && group) {
+    rightPanel.classList.remove('hidden');
+    loadTruthSamples(group);
+  } else if (cat === 'item' && info && info.group_by === 'barcode' && group && group !== '(barcode none)') {
+    rightPanel.classList.remove('hidden');
+    loadSamples(group);
+  } else {
+    rightPanel.classList.add('hidden');
+  }
+}
+
+// ══════════════════════════════════════════
+// Sample Panel
+// ══════════════════════════════════════════
+function loadSamples(barcode) {
+  const header = document.getElementById('sampleHeader');
+  const grid = document.getElementById('sampleGrid');
+
+  const files = sampleFileMap[barcode] || [];
+  header.textContent = 'Samples: ' + barcode + ' (' + files.length + ')';
+  grid.innerHTML = '';
+  grid.style.display = '';
+
+  if (files.length === 0) {
+    grid.innerHTML = '<div class="sample-empty">No samples available</div>';
+    return;
+  }
+
+  for (const file of files) {
+    const card = document.createElement('div');
+    card.className = 'sample-card';
+    const img = document.createElement('img');
+    img.alt = file.name;
+    attachSampleImage(img, file);
+    card.appendChild(img);
+    const name = document.createElement('div');
+    name.className = 'sample-name';
+    name.textContent = file.name;
+    card.appendChild(name);
+    grid.appendChild(card);
+  }
+}
+
+function loadTruthSamples(orderNo) {
+  const header = document.getElementById('sampleHeader');
+  const grid = document.getElementById('sampleGrid');
+  const correctionInfo = correctionInfoByOrder[orderNo];
+  const barcodes = correctionInfo ? correctionInfo.truthBarcodes || [] : [];
+  const truthTotal = correctionInfo ? getTruthTotalCount(correctionInfo) : 0;
+  const currentCounts = getCurrentBarcodeCountsForOrder(orderNo);
+  const orderedBarcodes = barcodes.slice().sort((a, b) => {
+    const aQty = correctionInfo.truthCounts && correctionInfo.truthCounts[a] ? correctionInfo.truthCounts[a] : 1;
+    const bQty = correctionInfo.truthCounts && correctionInfo.truthCounts[b] ? correctionInfo.truthCounts[b] : 1;
+    const aCurrent = currentCounts[a] || 0;
+    const bCurrent = currentCounts[b] || 0;
+    const aRank = getTruthStateRank(aCurrent, aQty);
+    const bRank = getTruthStateRank(bCurrent, bQty);
+    if (aRank !== bRank) return aRank - bRank;
+    if (aQty !== bQty) return aQty - bQty;
+    return a.localeCompare(b, undefined, { numeric: true });
+  });
+
+  header.innerHTML = '<div class="truth-total-label">총 상품수</div>' +
+    '<div class="truth-total-count">' + truthTotal.toLocaleString() + '<span>개</span></div>';
+  grid.innerHTML = '';
+  grid.style.display = 'block';
+
+  if (orderedBarcodes.length === 0) {
+    grid.innerHTML = '<div class="sample-empty">오류 엑셀 D열의 정답 바코드/수량 정보를 찾지 못했습니다.</div>';
+    return;
+  }
+
+  for (const barcode of orderedBarcodes) {
+    const section = document.createElement('div');
+    const truthQty = correctionInfo.truthCounts && correctionInfo.truthCounts[barcode] ? correctionInfo.truthCounts[barcode] : 1;
+    const currentQty = currentCounts[barcode] || 0;
+    const stateClass = currentQty <= 0 ? 'missing' : (currentQty === truthQty ? 'match' : 'partial');
+    section.className = 'truth-sample-section ' + stateClass;
+
+    const title = document.createElement('div');
+    title.className = 'truth-sample-title';
+    const files = sampleFileMap[barcode] || [];
+    title.innerHTML = escapeHtml(barcode) + '<span class="qty-badge ' + getQtyClass(truthQty) + '">' + truthQty + '개</span>';
+    section.appendChild(title);
+
+    if (files.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'truth-sample-empty';
+      empty.textContent = 'Samples 폴더에서 해당 바코드 crop 이미지를 찾지 못했습니다.';
+      section.appendChild(empty);
+    } else {
+      const sampleGrid = document.createElement('div');
+      sampleGrid.className = 'truth-sample-grid';
+      for (const file of files.slice(0, 6)) {
+        const card = document.createElement('div');
+        card.className = 'truth-sample-card';
+
+        const img = document.createElement('img');
+        img.alt = barcode;
+        attachSampleImage(img, file);
+        card.appendChild(img);
+
+        sampleGrid.appendChild(card);
+      }
+      section.appendChild(sampleGrid);
+    }
+
+    grid.appendChild(section);
+  }
+}
+
+function getTruthTotalCount(correctionInfo) {
+  if (!correctionInfo || !correctionInfo.truthCounts) return 0;
+  return Object.values(correctionInfo.truthCounts).reduce((sum, qty) => sum + Number(qty || 0), 0);
+}
+
+function getQtyClass(qty) {
+  const n = Math.max(1, Math.min(Number(qty || 1), 5));
+  return 'q' + n;
+}
+
+function getTruthStateRank(currentQty, truthQty) {
+  if (currentQty <= 0) return 0;      // 주황: 정답지에만 있음
+  if (currentQty !== truthQty) return 1; // 노랑: 개수 불일치
+  return 2;                           // 초록: 정답 수량만큼 있음
+}
+
+function getOrderCountSummary(orderNo, items) {
+  const correctionInfo = correctionInfoByOrder[orderNo];
+  if (!correctionInfo || !correctionInfo.truthCounts) return null;
+
+  const currentCounts = {};
+  for (const item of items || []) {
+    if (!item.barcode) continue;
+    currentCounts[item.barcode] = (currentCounts[item.barcode] || 0) + 1;
+  }
+
+  let matched = 0;
+  let missing = 0;
+  for (const [barcode, truthQty] of Object.entries(correctionInfo.truthCounts)) {
+    const currentQty = currentCounts[barcode] || 0;
+    matched += Math.min(currentQty, truthQty);
+    missing += Math.max(truthQty - currentQty, 0);
+  }
+  return { matched, missing };
+}
+
+function getCurrentBarcodeCountsForOrder(orderNo) {
+  const groups = structure.item && structure.item.groups ? structure.item.groups : {};
+  const items = groups[orderNo] || [];
+  const counts = {};
+  for (const item of items) {
+    if (!item.barcode) continue;
+    counts[item.barcode] = (counts[item.barcode] || 0) + 1;
+  }
+  return counts;
+}
+
+function sortItemsForGroup(groupKey, items, info) {
+  if (!info || info.group_by !== 'order') return items;
+  return items;
+}
+
+// ══════════════════════════════════════════
+// Content Rendering
+// ══════════════════════════════════════════
+const PAGE_SIZE = 50;
+let renderedGroups = {};
+
+function renderContent() {
+  // Clear pending crop queue when switching views
+  cropQueue.length = 0;
+  cropObserver.disconnect();
+
+  const container = document.getElementById('groupContainer');
+  container.innerHTML = '';
+  renderedGroups = {};
+
+  if (!activeCategory || !structure[activeCategory]) return;
+
+  const info = structure[activeCategory];
+  const groupLabel = info.group_by === 'order' ? 'order' : info.group_by;
+  document.getElementById('contentHeader').textContent =
+    activeCategory + ' - grouped by ' + groupLabel + ' (' + info.total + ' annotations)';
+
+  const groups = info.groups;
+  const groupKeys = activeGroup ? [activeGroup] : Object.keys(groups);
+
+  for (const gk of groupKeys) {
+    const items = groups[gk];
+    if (!items || items.length === 0) continue;
+
+    const filteredItems = sortItemsForGroup(gk, items.filter(it => matchesItemFilter(it)), info);
+    if (filteredItems.length === 0) continue;
+
+    const section = document.createElement('div');
+    section.className = 'group-section';
+
+    const gh = document.createElement('div');
+    gh.className = 'group-header';
+    let metaHtml = '';
+    if (activeCategory === 'item') {
+      if (info.group_by === 'order') {
+        metaHtml = '';
+      } else {
+        const sids = [...new Set(filteredItems.map(i => i.shipment_id).filter(Boolean))];
+        metaHtml = '<span class="group-meta">' + sids.length + ' shipments</span>';
+      }
+    }
+    if (activeCategory === 'item' && info.group_by === 'order') {
+      const totalItems = filteredItems.length;
+      const actionsHtml = groupSelection && activeGroup === gk ?
+        '<div class="group-header-actions"><button id="btnGroupConfirm" type="button">그룹 확인</button><button id="btnGroupCancel" type="button">취소</button></div>' : '';
+      gh.innerHTML = '<div class="group-title-box"><h3>' + escapeHtml(gk) + '</h3>' +
+        '<div class="group-total-label">총 아이템수</div>' +
+        '<div class="group-total-count">' + totalItems.toLocaleString() + '<span>개</span></div></div>' +
+        actionsHtml;
+    } else {
+      gh.innerHTML = '<h3>' + escapeHtml(gk) + '</h3>' + metaHtml +
+        '<span class="group-badge">' + filteredItems.length + ' items</span>';
+    }
+    gh.onclick = () => {
+      const body = section.querySelector('.group-body');
+      body.classList.toggle('collapsed');
+    };
+    section.appendChild(gh);
+    const confirmBtn = gh.querySelector('#btnGroupConfirm');
+    const cancelBtn = gh.querySelector('#btnGroupCancel');
+    if (confirmBtn) confirmBtn.onclick = (e) => { e.stopPropagation(); confirmGroupSelection(); };
+    if (cancelBtn) cancelBtn.onclick = (e) => { e.stopPropagation(); cancelGroupSelection(); };
+
+    const gb = document.createElement('div');
+    gb.className = 'group-body';
+
+    if (activeCategory === 'item' && info.group_by === 'order') {
+      const mismatchText = getOrderMismatchText(gk);
+      if (mismatchText) {
+        const mismatchInfo = document.createElement('div');
+        mismatchInfo.className = 'order-mismatch-info';
+        mismatchInfo.innerHTML = '<strong>불일치</strong>' + escapeHtml(mismatchText);
+        gb.appendChild(mismatchInfo);
+      }
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'items-grid';
+    gb.appendChild(grid);
+
+    renderedGroups[gk] = 0;
+    renderItemsPage(grid, filteredItems, gk);
+
+    if (filteredItems.length > PAGE_SIZE) {
+      const btn = document.createElement('button');
+      btn.className = 'load-more-btn';
+      btn.textContent = 'Load More (' + PAGE_SIZE + ')';
+      btn.onclick = () => renderItemsPage(grid, filteredItems, gk, btn);
+      gb.appendChild(btn);
+    }
+
+    if (activeCategory === 'item' && info.group_by === 'order') {
+      const sourcePanel = createSourceImagePanel(filteredItems);
+      if (sourcePanel) gb.appendChild(sourcePanel);
+    }
+
+    section.appendChild(gb);
+    container.appendChild(section);
+  }
+}
+
+function renderItemsPage(grid, items, groupKey, loadMoreBtn) {
+  const start = renderedGroups[groupKey] || 0;
+  const end = Math.min(start + PAGE_SIZE, items.length);
+
+  for (let i = start; i < end; i++) {
+    grid.appendChild(createItemCard(items[i]));
+  }
+  renderedGroups[groupKey] = end;
+
+  if (loadMoreBtn && end >= items.length) {
+    loadMoreBtn.style.display = 'none';
+  }
+}
+
+function createSourceImagePanel(items) {
+  if (!items || items.length === 0) return null;
+  const fileName = items[0].image_file;
+  const file = imageFileMap[fileName];
+  if (!file) return null;
+
+  const panel = document.createElement('div');
+  panel.className = 'source-image-panel';
+  const header = document.createElement('div');
+  header.className = 'source-image-header';
+  header.innerHTML = '<strong>원본 이미지</strong>';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'mask-toggle-btn';
+  btn.textContent = '라벨마스크';
+  header.appendChild(btn);
+  panel.appendChild(header);
+
+  const img = document.createElement('img');
+  img.alt = fileName;
+  panel.appendChild(img);
+
+  let showingMask = false;
+  const showOriginal = () => {
+    const url = URL.createObjectURL(file);
+    img.onload = () => URL.revokeObjectURL(url);
+    img.src = url;
+    btn.classList.remove('active');
+    showingMask = false;
+  };
+  btn.onclick = async () => {
+    if (showingMask) {
+      showOriginal();
+      return;
+    }
+    const dataURL = await createMaskOverlayDataURL(fileName, items);
+    if (dataURL) {
+      img.onload = null;
+      img.src = dataURL;
+      btn.classList.add('active');
+      showingMask = true;
+    }
+  };
+  showOriginal();
+  return panel;
+}
+
+async function createMaskOverlayDataURL(fileName, items) {
+  const img = await getImage(fileName);
+  if (!img) return null;
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+
+  const colors = [
+    [231, 76, 60],
+    [46, 204, 113],
+    [52, 152, 219],
+    [241, 196, 15],
+    [155, 89, 182],
+    [230, 126, 34],
+  ];
+  const overlay = ctx.getImageData(0, 0, w, h);
+  for (let idx = 0; idx < items.length; idx++) {
+    if (deletedAnnotationIds.has(items[idx].ann_id)) continue;
+    const ann = annotations[items[idx].ann_id];
+    if (!ann) continue;
+    const mask = decodeAnnotationMask(ann);
+    if (!mask || mask.length !== w * h) continue;
+    const color = colors[idx % colors.length];
+    for (let i = 0; i < mask.length; i++) {
+      if (!mask[i]) continue;
+      const p = i * 4;
+      overlay.data[p] = Math.round(overlay.data[p] * 0.55 + color[0] * 0.45);
+      overlay.data[p + 1] = Math.round(overlay.data[p + 1] * 0.55 + color[1] * 0.45);
+      overlay.data[p + 2] = Math.round(overlay.data[p + 2] * 0.55 + color[2] * 0.45);
+    }
+  }
+  ctx.putImageData(overlay, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+function getOrderMismatchText(orderNo) {
+  const correctionInfo = correctionInfoByOrder[orderNo];
+  if (!correctionInfo || !correctionInfo.deleteCounts) return '';
+  return Object.entries(correctionInfo.deleteCounts)
+    .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
+    .map(([barcode, qty]) => barcode + ' (' + qty + '개 불일치)')
+    .join('\n');
+}
+
+function createItemCard(item) {
+  const card = document.createElement('div');
+  const orderNo = getOrderNoFromFileName(item.image_file) || item.shipment_id || '';
+  const correctionInfo = correctionInfoByOrder[orderNo];
+  const deleteBarcodes = correctionInfo ? correctionInfo.deleteBarcodes || [] : [];
+  const isDeleteTarget = item.barcode && deleteBarcodes.includes(item.barcode);
+  card.className = 'item-card' +
+    (errorSet.has(item.ann_id) ? ' error' : '') +
+    (isDeleteTarget ? ' delete-target' : '') +
+    (groupSelection && groupSelection.ids.has(item.ann_id) ? ' group-selected' : '') +
+    (deletedAnnotationIds.has(item.ann_id) ? ' deleted-mark' : '');
+  card.dataset.annId = item.ann_id;
+
+  // Lazy-load crop image
+  const placeholder = document.createElement('div');
+  placeholder.className = 'crop-placeholder';
+  placeholder.style.cssText = 'width:100%;height:150px;background:#222;display:flex;align-items:center;justify-content:center;color:#666;font-size:12px;';
+  placeholder.textContent = 'Loading...';
+  card.appendChild(placeholder);
+
+  cropObserver.observe(card);
+
+  const meta = document.createElement('div');
+  meta.className = 'item-meta';
+
+  if (item.shipment_id) {
+    const sid = document.createElement('div');
+    sid.className = 'sid';
+    sid.textContent = 'Ship: ' + item.shipment_id;
+    meta.appendChild(sid);
+  }
+
+  const src = document.createElement('div');
+  src.className = 'src';
+  src.textContent = item.image_file;
+  meta.appendChild(src);
+
+  // Category dropdown
+  if (allCategories.length > 0) {
+    const catDiv = document.createElement('div');
+    catDiv.className = 'category-edit';
+    const catLabel = document.createElement('label');
+    catLabel.textContent = 'Class:';
+    const catSelect = document.createElement('select');
+    catSelect.dataset.annId = item.ann_id;
+    catSelect.dataset.original = item.category;
+    for (const cat of allCategories) {
+      const opt = document.createElement('option');
+      opt.value = cat.name;
+      opt.textContent = cat.name;
+      if (cat.name === item.category) opt.selected = true;
+      catSelect.appendChild(opt);
+    }
+    catSelect.addEventListener('change', (e) => handleCategoryEdit(e.target));
+    catDiv.appendChild(catLabel);
+    catDiv.appendChild(catSelect);
+    meta.appendChild(catDiv);
+  }
+
+  // Barcode editor
+  if (item.category === 'item') {
+    const bcDiv = document.createElement('div');
+    bcDiv.className = 'barcode-edit';
+    const lbl = document.createElement('label');
+    lbl.textContent = 'BC:';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = item.barcode || '';
+    inp.dataset.annId = item.ann_id;
+    inp.dataset.original = item.barcode || '';
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
+    inp.addEventListener('blur', (e) => handleBarcodeEdit(e.target));
+    bcDiv.appendChild(lbl);
+    bcDiv.appendChild(inp);
+    meta.appendChild(bcDiv);
+  }
+
+  if (groupSelection) {
+    const groupBox = document.createElement('div');
+    groupBox.className = 'group-pick';
+    const groupCb = document.createElement('input');
+    groupCb.type = 'checkbox';
+    groupCb.checked = groupSelection.ids.has(item.ann_id);
+    groupCb.onchange = () => toggleGroupSelection(item.ann_id, groupCb.checked);
+    const groupLabel = document.createElement('label');
+    groupLabel.textContent = '그룹 선택';
+    groupBox.appendChild(groupCb);
+    groupBox.appendChild(groupLabel);
+    meta.appendChild(groupBox);
+  }
+
+  const errDiv = document.createElement('div');
+  errDiv.className = 'error-edit';
+  const errLabel = document.createElement('label');
+  errLabel.textContent = 'Error:';
+  const current = errorRecords.get(item.ann_id);
+  const buttons = document.createElement('div');
+  buttons.className = 'error-buttons';
+  const options = [
+    ['폴리곤 오류', '폴리곤 오류'],
+    ['누락', '누락'],
+    ['삭제 처리', '삭제 처리'],
+    ['그룹 처리', '그룹 처리'],
+    ['기타', '기타'],
+  ];
+  for (const [value, label] of options) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    if (current && current.error_type === value) btn.classList.add('active');
+    btn.onclick = () => handleErrorType(item, value, card);
+    buttons.appendChild(btn);
+  }
+  if (current) {
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.textContent = '해제';
+    clearBtn.onclick = () => handleErrorType(item, '', card);
+    buttons.appendChild(clearBtn);
+  }
+  errDiv.appendChild(errLabel);
+  errDiv.appendChild(buttons);
+  meta.appendChild(errDiv);
+
+  if (current && current.note) {
+    const note = document.createElement('div');
+    note.className = 'error-note';
+    note.textContent = current.note;
+    meta.appendChild(note);
+  }
+
+  if (deletedAnnotationIds.has(item.ann_id) && current && current.error_type === '삭제 처리') {
+    const restore = document.createElement('button');
+    restore.type = 'button';
+    restore.className = 'restore-btn';
+    restore.textContent = '복구';
+    restore.onclick = () => restoreAnnotationLocal(item.ann_id);
+    meta.appendChild(restore);
+  }
+
+  card.appendChild(meta);
+  return card;
+}
+
+// ══════════════════════════════════════════
+// Error Handling
+// ══════════════════════════════════════════
+function setErrorRecord(annId, record, card) {
+  if (record) {
+    errorSet.add(annId);
+    errorRecords.set(annId, { ann_id: annId, ...record });
+    if (card) card.classList.add('error');
+  } else {
+    errorSet.delete(annId);
+    errorRecords.delete(annId);
+    if (card) card.classList.remove('error');
+  }
+  updateProgress();
+}
+
+function handleErrorType(item, type, card) {
+  const annId = item.ann_id;
+  if (!type) {
+    const current = errorRecords.get(annId);
+    if (current && current.error_type === '그룹 처리') restoreGroupLocal(annId);
+    setErrorRecord(annId, null, card);
+    renderContent();
+    return;
+  }
+  if (type === '기타') {
+    const note = prompt('기타 내용을 입력하세요.', errorRecords.get(annId)?.note || '');
+    if (note === null) {
+      return;
+    }
+    setErrorRecord(annId, { error_type: type, note, related_ann_ids: [] }, card);
+    renderContent();
+    return;
+  }
+  if (type === '삭제 처리') {
+    if (!confirm('이 annotation을 JSON에서 삭제 처리할까요? Save JSON으로 수정본을 내려받아야 반영됩니다.')) {
+      return;
+    }
+    deleteAnnotationLocal(annId, card);
+    return;
+  }
+  if (type === '그룹 처리') {
+    startGroupSelection(annId);
+    setErrorRecord(annId, { error_type: type, note: '그룹 대상 선택 중', related_ann_ids: [] }, card);
+    renderContent();
+    return;
+  }
+  setErrorRecord(annId, { error_type: type, note: '', related_ann_ids: [] }, card);
+  renderContent();
+}
+
+function deleteAnnotationLocal(annId, card) {
+  const ann = annotations[annId];
+  if (!ann) return;
+  deletedAnnotations[annId] = JSON.parse(JSON.stringify(ann));
+  deletedAnnotationIds.add(annId);
+  markOrderModifiedForAnn(ann);
+  dirty = true;
+  setErrorRecord(annId, { error_type: '삭제 처리', note: 'JSON 저장 시 삭제됨', related_ann_ids: [] }, card);
+  renderSidebar();
+  renderContent();
+}
+
+function restoreAnnotationLocal(annId) {
+  deletedAnnotationIds.delete(annId);
+  delete deletedAnnotations[annId];
+  const rec = errorRecords.get(annId);
+  if (rec && rec.error_type === '삭제 처리') setErrorRecord(annId, null);
+  dirty = true;
+  renderSidebar();
+  renderContent();
+}
+
+function startGroupSelection(targetId) {
+  groupSelection = { targetId, ids: new Set([targetId]) };
+  showGroupToolbar();
+}
+
+function toggleGroupSelection(annId, checked) {
+  if (!groupSelection) return;
+  if (checked) groupSelection.ids.add(annId);
+  else if (annId !== groupSelection.targetId) groupSelection.ids.delete(annId);
+  showGroupToolbar();
+}
+
+function showGroupToolbar() {
+  renderContent();
+}
+
+function cancelGroupSelection() {
+  if (groupSelection) {
+    const rec = errorRecords.get(groupSelection.targetId);
+    if (rec && rec.error_type === '그룹 처리' && rec.note === '그룹 대상 선택 중') {
+      setErrorRecord(groupSelection.targetId, null);
+    }
+  }
+  groupSelection = null;
+  showGroupToolbar();
+  renderContent();
+}
+
+function confirmGroupSelection() {
+  if (!groupSelection) return;
+  const targetId = groupSelection.targetId;
+  const sourceIds = [...groupSelection.ids].filter(id => id !== targetId);
+  if (sourceIds.length === 0) {
+    alert('그룹할 annotation을 1개 이상 선택하세요.');
+    return;
+  }
+  const result = mergeAnnotationsLocal(targetId, sourceIds);
+  if (!result.ok) {
+    alert('Group failed: ' + result.error);
+    return;
+  }
+  setErrorRecord(targetId, {
+    error_type: '그룹 처리',
+    note: '선택 annotation을 target에 병합',
+    related_ann_ids: sourceIds,
+  });
+  groupSelection = null;
+  showGroupToolbar();
+  refreshAfterJsonEdit();
+}
+
+function mergeAnnotationsLocal(targetId, sourceIds) {
+  const target = annotations[targetId];
+  if (!target) return { ok: false, error: 'target annotation not found' };
+  groupBackups[targetId] = {
+    target: JSON.parse(JSON.stringify(target)),
+    sources: sourceIds.map(id => JSON.parse(JSON.stringify(annotations[id]))),
+  };
+  const imgInfo = images[target.image_id];
+  if (!imgInfo) return { ok: false, error: 'target image not found' };
+  const h = imgInfo.height;
+  const w = imgInfo.width;
+  const merged = decodeAnnotationMask(target);
+  if (!merged) return { ok: false, error: 'target segmentation could not be decoded' };
+
+  for (const sid of sourceIds) {
+    const src = annotations[sid];
+    if (!src) return { ok: false, error: 'source annotation ' + sid + ' not found' };
+    if (src.image_id !== target.image_id) {
+      return { ok: false, error: '같은 이미지의 annotation만 그룹 처리할 수 있습니다.' };
+    }
+    const srcMask = decodeAnnotationMask(src);
+    if (!srcMask) return { ok: false, error: 'source annotation ' + sid + ' segmentation decode failed' };
+    for (let i = 0; i < merged.length; i++) {
+      if (srcMask[i]) merged[i] = 1;
+    }
+  }
+
+  const stats = maskStats(merged, h, w);
+  target.segmentation = encodeUncompressedRLE(merged, h, w);
+  target.area = stats.area;
+  target.bbox = stats.bbox;
+  target.iscrowd = 1;
+
+  const rawTarget = cocoData.annotations.find(a => a.id === targetId);
+  if (rawTarget) Object.assign(rawTarget, {
+    segmentation: target.segmentation,
+    area: target.area,
+    bbox: target.bbox,
+    iscrowd: target.iscrowd,
+  });
+
+  for (const sid of sourceIds) {
+    deletedAnnotations[sid] = JSON.parse(JSON.stringify(annotations[sid]));
+    deletedAnnotationIds.add(sid);
+    markOrderModifiedForAnn(annotations[sid]);
+    delete cropCache[sid];
+  }
+  markOrderModifiedForAnn(target);
+  delete cropCache[targetId];
+  dirty = true;
+  return { ok: true };
+}
+
+function restoreGroupLocal(targetId) {
+  const backup = groupBackups[targetId];
+  if (!backup) return;
+  annotations[targetId] = JSON.parse(JSON.stringify(backup.target));
+  const rawTarget = cocoData.annotations.find(a => a.id === targetId);
+  if (rawTarget) Object.assign(rawTarget, JSON.parse(JSON.stringify(backup.target)));
+  for (const source of backup.sources) {
+    deletedAnnotationIds.delete(source.id);
+    delete deletedAnnotations[source.id];
+    annotations[source.id] = JSON.parse(JSON.stringify(source));
+  }
+  delete groupBackups[targetId];
+  delete cropCache[targetId];
+  dirty = true;
+}
+
+function decodeAnnotationMask(ann) {
+  const imgInfo = images[ann.image_id];
+  if (!imgInfo || !ann.segmentation) return null;
+  if (Array.isArray(ann.segmentation)) return decodePolygonMask(ann.segmentation, imgInfo.height, imgInfo.width);
+  return decodeMask(ann.segmentation, imgInfo.height, imgInfo.width);
+}
+
+function decodePolygonMask(polygons, h, w) {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  for (const poly of polygons) {
+    if (!poly || poly.length < 6) continue;
+    ctx.beginPath();
+    ctx.moveTo(poly[0], poly[1]);
+    for (let i = 2; i < poly.length; i += 2) ctx.lineTo(poly[i], poly[i + 1]);
+    ctx.closePath();
+    ctx.fill();
+  }
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const mask = new Uint8Array(h * w);
+  for (let i = 0; i < mask.length; i++) mask[i] = data[i * 4 + 3] ? 1 : 0;
+  return mask;
+}
+
+function refreshAfterJsonEdit() {
+  buildStructure();
+  totalAnnotations = 0;
+  for (const cat in structure) totalAnnotations += structure[cat].total;
+  renderSidebar();
+  renderContent();
+  updateProgress();
+}
+
+function markOrderModifiedForAnn(ann) {
+  if (!ann) return;
+  const img = images[ann.image_id] || {};
+  const orderNo = getOrderNoFromFileName(img.file_name || '') ||
+    (ann.attributes && ann.attributes.shipment_id) || '';
+  if (orderNo) modifiedOrderNos.add(orderNo);
+}
+
+function updateProgress() {
+  const count = errorSet.size;
+  document.getElementById('errorCount').textContent = count.toLocaleString();
+  document.getElementById('totalCount').textContent = totalAnnotations.toLocaleString();
+  const pct = totalAnnotations > 0 ? (count / totalAnnotations * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('btnExport').disabled = count === 0;
+}
+
+// ══════════════════════════════════════════
+// Category Edit
+// ══════════════════════════════════════════
+function handleCategoryEdit(select) {
+  const annId = parseInt(select.dataset.annId);
+  const newVal = select.value;
+  const oldVal = select.dataset.original;
+  if (newVal === oldVal) return;
+
+  const ann = annotations[annId];
+  if (!ann) return;
+
+  const oldCatName = categories[ann.category_id] || 'unknown';
+  const newCatId = catNameToId[newVal];
+  if (newCatId === undefined) return;
+
+  // Update by_category
+  if (byCategory[oldCatName]) {
+    byCategory[oldCatName] = byCategory[oldCatName].filter(id => id !== annId);
+    if (byCategory[oldCatName].length === 0) delete byCategory[oldCatName];
+  }
+  if (!byCategory[newVal]) byCategory[newVal] = [];
+  byCategory[newVal].push(annId);
+
+  // Update by_barcode
+  if (oldCatName === 'item') {
+    const barcode = (ann.attributes && ann.attributes.barcode) || '';
+    const oldKey = barcode || '__no_barcode__';
+    if (byBarcode[oldKey]) {
+      byBarcode[oldKey] = byBarcode[oldKey].filter(id => id !== annId);
+      if (byBarcode[oldKey].length === 0) delete byBarcode[oldKey];
+    }
+  }
+  if (newVal === 'item') {
+    if (!byBarcode['__no_barcode__']) byBarcode['__no_barcode__'] = [];
+    byBarcode['__no_barcode__'].push(annId);
+  }
+
+  // Update annotation
+  ann.category_id = newCatId;
+  const defaultAttrs = newVal === 'item' ? { barcode: '', shipment_id: '' } :
+                       newVal === 'roi' ? {} : { iscrowd: '0' };
+  ann.attributes = defaultAttrs;
+
+  // Update raw data
+  const rawAnn = cocoData.annotations.find(a => a.id === annId);
+  if (rawAnn) {
+    rawAnn.category_id = newCatId;
+    rawAnn.attributes = { ...defaultAttrs };
+  }
+
+  select.dataset.original = newVal;
+  dirty = true;
+  markOrderModifiedForAnn(ann);
+
+  buildStructure();
+  totalAnnotations = 0;
+  for (const cat in structure) totalAnnotations += structure[cat].total;
+  renderSidebar();
+  renderContent();
+  updateProgress();
+}
+
+// ══════════════════════════════════════════
+// Barcode Edit
+// ══════════════════════════════════════════
+function handleBarcodeEdit(input) {
+  const annId = parseInt(input.dataset.annId);
+  const newVal = input.value.trim();
+  const oldVal = input.dataset.original;
+  if (newVal === oldVal) return;
+
+  const ann = annotations[annId];
+  if (!ann) return;
+
+  const oldBarcode = (ann.attributes && ann.attributes.barcode) || '';
+  const oldKey = oldBarcode || '__no_barcode__';
+  const newKey = newVal || '__no_barcode__';
+
+  if (!ann.attributes) ann.attributes = {};
+  ann.attributes.barcode = newVal;
+
+  // Re-index
+  if (byBarcode[oldKey]) {
+    byBarcode[oldKey] = byBarcode[oldKey].filter(id => id !== annId);
+    if (byBarcode[oldKey].length === 0) delete byBarcode[oldKey];
+  }
+  if (!byBarcode[newKey]) byBarcode[newKey] = [];
+  byBarcode[newKey].push(annId);
+
+  // Update raw data
+  const rawAnn = cocoData.annotations.find(a => a.id === annId);
+  if (rawAnn) {
+    if (!rawAnn.attributes) rawAnn.attributes = {};
+    rawAnn.attributes.barcode = newVal;
+  }
+
+  input.dataset.original = newVal;
+  input.classList.add('saved');
+  setTimeout(() => input.classList.remove('saved'), 1500);
+  dirty = true;
+  markOrderModifiedForAnn(ann);
+  updateItemBarcodeInStructure(annId, newVal);
+
+  renderSidebar();
+  renderContent();
+}
+
+function updateItemBarcodeInStructure(annId, newBarcode) {
+  for (const catInfo of Object.values(structure)) {
+    if (!catInfo || !catInfo.groups) continue;
+    for (const items of Object.values(catInfo.groups)) {
+      const item = items.find(it => it.ann_id === annId);
+      if (item) item.barcode = newBarcode;
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+// Download Modified JSON
+// ══════════════════════════════════════════
+function downloadModifiedJSON() {
+  if (!cocoData) { alert('No dataset loaded.'); return; }
+
+  const outputData = {
+    ...cocoData,
+    annotations: (cocoData.annotations || []).filter(ann => !deletedAnnotationIds.has(ann.id))
+  };
+  const jsonStr = JSON.stringify(outputData, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'instances_modified.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  dirty = false;
+}
+
+// ══════════════════════════════════════════
+// Excel Export (ExcelJS CDN)
+// ══════════════════════════════════════════
+function loadExcelJS() {
+  return new Promise((resolve, reject) => {
+    if (window.ExcelJS) return resolve(window.ExcelJS);
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+    s.onload = () => resolve(window.ExcelJS);
+    s.onerror = () => reject(new Error('Failed to load ExcelJS'));
+    document.head.appendChild(s);
+  });
+}
+
+async function exportXlsx() {
+  if (errorSet.size === 0) { alert('No error items checked.'); return; }
+
+  const btn = document.getElementById('btnExport');
+  btn.textContent = 'Exporting...';
+  btn.disabled = true;
+
+  try {
+    const ExcelJS = await loadExcelJS();
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('errors');
+
+    // Headers
+    ws.columns = [
+      { header: 'error_type', key: 'error_type', width: 16 },
+      { header: 'note', key: 'note', width: 30 },
+      { header: 'related_annotation_ids', key: 'related_annotation_ids', width: 24 },
+      { header: 'barcode', key: 'barcode', width: 20 },
+      { header: 'shipment_id', key: 'shipment_id', width: 22 },
+      { header: 'category', key: 'category', width: 14 },
+      { header: 'annotation_id', key: 'annotation_id', width: 14 },
+      { header: 'frame', key: 'frame', width: 10 },
+      { header: 'source_image', key: 'source_image', width: 55 },
+      { header: 'crop_image', key: 'crop_image', width: 20 },
+    ];
+
+    // Bold headers
+    ws.getRow(1).font = { bold: true };
+
+    const THUMB_HEIGHT = 80;
+    const records = [...errorRecords.values()];
+
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      const annId = record.ann_id;
+      const ann = annotations[annId] || deletedAnnotations[annId];
+      if (!ann) continue;
+
+      const imgInfo = images[ann.image_id] || {};
+      const attrs = ann.attributes || {};
+      const catName = categories[ann.category_id] || 'unknown';
+      const frame = imageFrameIndex[ann.image_id] !== undefined ? imageFrameIndex[ann.image_id] : -1;
+
+      const row = ws.addRow({
+        error_type: record.error_type || '',
+        note: record.note || '',
+        related_annotation_ids: (record.related_ann_ids || []).join(', '),
+        barcode: attrs.barcode || '',
+        shipment_id: attrs.shipment_id || '',
+        category: catName,
+        annotation_id: annId,
+        frame: frame,
+        source_image: imgInfo.file_name || '',
+        crop_image: '',
+      });
+
+      // Add crop thumbnail
+      try {
+        const dataURL = await getCropDataURL(annId);
+        if (dataURL) {
+          const base64 = dataURL.split(',')[1];
+          const imgId = wb.addImage({ base64, extension: 'jpeg' });
+
+          // Calculate thumbnail dimensions
+          const imgEl = new Image();
+          await new Promise(r => { imgEl.onload = r; imgEl.src = dataURL; });
+          const ratio = THUMB_HEIGHT / imgEl.height;
+          const tw = Math.max(1, Math.round(imgEl.width * ratio));
+
+          ws.addImage(imgId, {
+            tl: { col: 9, row: row.number - 1 },
+            ext: { width: tw, height: THUMB_HEIGHT },
+          });
+        }
+      } catch (e) {
+        row.getCell(10).value = '[thumbnail error]';
+      }
+
+      row.height = THUMB_HEIGHT * 0.75;
+    }
+
+    // Download
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'error_items.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+
+  } catch (e) {
+    alert('Export failed: ' + e.message);
+    console.error(e);
+  } finally {
+    btn.textContent = 'Export XLSX';
+    btn.disabled = errorSet.size === 0;
+  }
+}
+
+// ══════════════════════════════════════════
+// Filters
+// ══════════════════════════════════════════
+function matchesItemFilter(item) {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  const status = document.getElementById('statusFilter').value;
+
+  if (query) {
+    const match =
+      item.image_file.toLowerCase().includes(query) ||
+      (item.barcode && item.barcode.toLowerCase().includes(query)) ||
+      (item.shipment_id && item.shipment_id.toLowerCase().includes(query)) ||
+      (item.category && item.category.toLowerCase().includes(query)) ||
+      String(item.ann_id).includes(query);
+    if (!match) return false;
+  }
+
+  if (status === 'has_error') return errorSet.has(item.ann_id);
+  if (status === 'no_error') return !errorSet.has(item.ann_id);
+  return true;
+}
+
+document.getElementById('searchInput').addEventListener('input', () => renderContent());
+document.getElementById('statusFilter').addEventListener('change', () => renderContent());
+document.getElementById('viewModeToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-mode]');
+  if (!btn) return;
+  setViewMode(btn.dataset.mode);
+});
+
+function setViewMode(mode) {
+  viewMode = mode;
+  document.querySelectorAll('#viewModeToggle button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === viewMode);
+  });
+  if (!cocoData) return;
+  activeGroup = null;
+  buildStructure();
+  totalAnnotations = 0;
+  for (const cat in structure) totalAnnotations += structure[cat].total;
+  renderSidebar();
+  selectDefaultCategory();
+}
+
+// ══════════════════════════════════════════
+// Keyboard Navigation
+// ══════════════════════════════════════════
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  const tag = document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+  e.preventDefault();
+  const items = [...document.querySelectorAll('#categoryTree li')];
+  if (items.length === 0) return;
+
+  const activeIdx = items.findIndex(li => li.classList.contains('active'));
+  let nextIdx;
+  if (e.key === 'ArrowDown') nextIdx = activeIdx < items.length - 1 ? activeIdx + 1 : 0;
+  else nextIdx = activeIdx > 0 ? activeIdx - 1 : items.length - 1;
+
+  const target = items[nextIdx];
+  selectCategory(target.dataset.category, target.dataset.group);
+  target.scrollIntoView({ block: 'nearest' });
+});
+</script>
+</body>
+</html>
