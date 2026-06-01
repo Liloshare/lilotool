@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>검수 포털</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1f2d3d;
+  background: #f4f6f8;
+}
+a { color: inherit; text-decoration: none; }
+.topbar {
+  height: 56px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px; background: #24313d; color: #fff; border-bottom: 1px solid #1d2832;
+}
+.brand { font-size: 17px; font-weight: 800; letter-spacing: 0; }
+.toplinks { display: flex; gap: 8px; align-items: center; }
+.toplinks a {
+  padding: 7px 10px; border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 6px; font-size: 12px; font-weight: 700; color: #ecf0f1;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 30px 28px 42px; }
+.hero {
+  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  gap: 24px; align-items: stretch; margin-bottom: 24px;
+}
+.hero-main {
+  background: #fff; border: 1px solid #dfe5eb; border-radius: 8px;
+  padding: 26px 28px;
+}
+.eyebrow { font-size: 12px; color: #2874a6; font-weight: 800; margin-bottom: 8px; }
+h1 { font-size: 30px; line-height: 1.2; letter-spacing: 0; margin-bottom: 10px; }
+.hero-main p { color: #52616f; font-size: 14px; line-height: 1.6; max-width: 720px; }
+.hero-side {
+  background: #fff; border: 1px solid #dfe5eb; border-radius: 8px;
+  padding: 18px; display: flex; flex-direction: column; gap: 10px;
+}
+.hero-side h2 { font-size: 14px; color: #2c3e50; margin-bottom: 2px; }
+.resource-link {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 11px 12px; border: 1px solid #e2e8ee; border-radius: 6px; background: #fbfcfd;
+}
+.resource-link span:first-child { font-size: 13px; font-weight: 800; }
+.resource-link span:last-child { font-size: 12px; color: #7b8794; }
+.section-title {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 20px 0 12px;
+}
+.section-title h2 { font-size: 18px; }
+.section-title p { font-size: 12px; color: #6b7785; }
+.flow {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
+}
+.step {
+  background: #fff; border: 1px solid #dfe5eb; border-radius: 8px;
+  min-height: 210px; display: flex; flex-direction: column;
+}
+.step-head {
+  display: flex; align-items: center; gap: 10px; padding: 16px 16px 10px;
+}
+.num {
+  width: 30px; height: 30px; border-radius: 50%; background: #e8f4fd; color: #21618c;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 900; flex: 0 0 auto;
+}
+.step h3 { font-size: 16px; }
+.step-body { padding: 0 16px 16px; flex: 1; display: flex; flex-direction: column; }
+.step-body p { color: #596875; font-size: 13px; line-height: 1.55; margin-bottom: 14px; }
+.step-body ul { list-style: none; display: grid; gap: 6px; margin-bottom: 14px; }
+.step-body li { font-size: 12px; color: #41505e; }
+.step-body li::before { content: "•"; color: #3498db; font-weight: 900; margin-right: 6px; }
+.action {
+  margin-top: auto; display: inline-flex; align-items: center; justify-content: center;
+  min-height: 36px; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+  font-weight: 900; border: 1px solid #2874a6; color: #fff; background: #3498db;
+}
+.action.disabled {
+  border-color: #c7d0d9; background: #eef2f5; color: #7b8794; cursor: default;
+}
+.note {
+  margin-top: 16px; padding: 13px 14px; border: 1px solid #f0d39a;
+  background: #fff9ed; color: #72510d; border-radius: 8px; font-size: 13px; line-height: 1.55;
+}
+@media (max-width: 860px) {
+  .topbar { height: auto; padding: 14px 18px; align-items: flex-start; gap: 12px; flex-direction: column; }
+  .toplinks { flex-wrap: wrap; }
+  .wrap { padding: 22px 16px 32px; }
+  .hero { grid-template-columns: 1fr; }
+  .flow { grid-template-columns: 1fr; }
+  h1 { font-size: 25px; }
+}
+
+body {
+  color: #34312f;
+  background: linear-gradient(135deg, #faf8f5 0%, #f4f3bd 100%);
+}
+.topbar {
+  background: #aec4ca;
+  color: #24313d;
+  border-bottom-color: #9bb3ba;
+}
+.toplinks a {
+  color: #2f3d43;
+  background: rgba(255,255,255,0.38);
+  border-color: rgba(255,255,255,0.56);
+}
+.hero-main,
+.hero-side,
+.step {
+  background: rgba(255,255,255,0.86);
+  border-color: #d9d5d2;
+  box-shadow: 0 10px 28px rgba(117, 126, 130, 0.13);
+}
+.eyebrow,
+.section-title h2,
+.hero-side h2,
+.step h3,
+.resource-link span:first-child {
+  color: #536f77;
+}
+.resource-link {
+  background: #f8fbfa;
+  border-color: #d9e9e3;
+}
+.num {
+  background: #f4f3bd;
+  color: #5f6f42;
+}
+.step-body li::before { color: #aec4ca; }
+.action {
+  background: #fcd19e;
+  border-color: #9bb3ba;
+  color: #34312f;
+}
+.action:hover { background: #fcd19e; }
+.action.disabled {
+  background: #d9d5d2;
+  border-color: #c9c3bf;
+  color: #6c6662;
+}
+.note {
+  background: #fff7df;
+  border-color: #fcd19e;
+  color: #65513a;
+}
+
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">검수 포털</div>
+  <nav class="toplinks" aria-label="빠른 링크">
+    <a href="https://docs.google.com/spreadsheets/d/1HTKBaXD-EbAdOP_rVQACVUmHigFKixHlJeKsPn5HGFU/edit?gid=1671029041#gid=1671029041" target="_blank" rel="noopener">스케줄</a>
+    <a href="https://fresh-viewer.cmes-ai.com/home" target="_blank" rel="noopener">주문 조회</a>
+    <a href="http://8.161.213.153/" target="_blank" rel="noopener">씨벳</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="hero-main">
+      <div class="eyebrow">REVIEW WORKFLOW</div>
+      <h1>검수 작업을 단계별로 진입하세요</h1>
+      <p>
+        번들/폴리곤 검수부터 납품까지 작업 흐름을 한 화면에서 확인하고, 필요한 검수 페이지와 관련 자료로 바로 이동합니다.
+        각 검수 페이지는 로컬 파일을 불러와 브라우저에서 확인하고 결과 파일을 내려받는 방식으로 사용합니다.
+      </p>
+    </div>
+    <aside class="hero-side" aria-label="관련 자료">
+      <h2>관련 자료</h2>
+      <a class="resource-link" href="https://docs.google.com/spreadsheets/d/1HTKBaXD-EbAdOP_rVQACVUmHigFKixHlJeKsPn5HGFU/edit?gid=1671029041#gid=1671029041" target="_blank" rel="noopener">
+        <span>스케줄</span><span>Google Sheet</span>
+      </a>
+      <a class="resource-link" href="https://fresh-viewer.cmes-ai.com/home" target="_blank" rel="noopener">
+        <span>주문 조회</span><span>Fresh Viewer</span>
+      </a>
+      <a class="resource-link" href="http://8.161.213.153/" target="_blank" rel="noopener">
+        <span>씨벳</span><span>Review System</span>
+      </a>
+    </aside>
+  </section>
+
+  <div class="section-title">
+    <h2>검수 단계</h2>
+    <p>왼쪽에서 오른쪽 순서로 진행</p>
+  </div>
+
+  <section class="flow" aria-label="검수 페이지 목록">
+    <article class="step">
+      <div class="step-head">
+        <span class="num">1</span>
+        <h3>번들/폴리곤 검수</h3>
+      </div>
+      <div class="step-body">
+        <p>CVAT에서 번들 단위 작업 상태와 기본 라벨링 결과를 먼저 확인합니다.</p>
+        <ul>
+          <li>번들 작업 확인</li>
+          <li>라벨링 상태 확인</li>
+          <li>후속 검수 대상 파악</li>
+        </ul>
+        <a class="action" href="http://8.161.213.153/" target="_blank" rel="noopener">CVAT 열기</a>
+      </div>
+    </article>
+
+    <article class="step">
+      <div class="step-head">
+        <span class="num">2</span>
+        <h3>바코드 매칭</h3>
+      </div>
+      <div class="step-body">
+        <p>아이템별 바코드 매칭 상태와 오류 항목을 검수하는 페이지입니다.</p>
+        <ul>
+          <li>아이템별 오류 확인</li>
+          <li>오류 유형 기록</li>
+          <li>결과 엑셀 내보내기</li>
+        </ul>
+        <a class="action" href="MaskReview_ErrorTypes_UPDATED.html" target="_blank" rel="noopener">검수 시작</a>
+      </div>
+    </article>
+
+    <article class="step">
+      <div class="step-head">
+        <span class="num">3</span>
+        <h3>주문목록 불일치 csv 추출</h3>
+      </div>
+      <div class="step-body">
+        <p>주문 조회 자료와 검수 기준을 비교해 주문목록 불일치 확인용 CSV를 준비합니다.</p>
+        <ul>
+          <li>주문목록 비교</li>
+          <li>불일치 후보 추출</li>
+          <li>검수 입력 파일 준비</li>
+        </ul>
+        <a class="action" href="주문번호_바코드_대조툴.html" target="_blank" rel="noopener">CSV 추출</a>
+      </div>
+    </article>
+
+    <article class="step">
+      <div class="step-head">
+        <span class="num">4</span>
+        <h3>주문번호 불일치 검수</h3>
+      </div>
+      <div class="step-body">
+        <p>정답지 엑셀과 주문번호별 annotation을 비교해 불일치 항목을 검수하는 페이지입니다.</p>
+        <ul>
+          <li>정답지 엑셀 불러오기</li>
+          <li>주문번호별 불일치 확인</li>
+          <li>JSON 수정본 및 결과 엑셀 저장</li>
+        </ul>
+        <a class="action" href="order_mismatch_review.html" target="_blank" rel="noopener">검수 시작</a>
+      </div>
+    </article>
+
+    <article class="step">
+      <div class="step-head">
+        <span class="num">5</span>
+        <h3>폴리곤 재작업</h3>
+      </div>
+      <div class="step-body">
+        <p>검수에서 발견된 폴리곤 오류, 누락, 삭제, 그룹 처리 항목을 기준으로 재작업합니다.</p>
+        <ul>
+          <li>오류 항목 확인</li>
+          <li>JSON 수정본 반영</li>
+          <li>재검수 대상 정리</li>
+        </ul>
+        <a class="action" href="http://8.161.213.153/" target="_blank" rel="noopener">CVAT 열기</a>
+      </div>
+    </article>
+
+    <article class="step">
+      <div class="step-head">
+        <span class="num">6</span>
+        <h3>납품</h3>
+      </div>
+      <div class="step-body">
+        <p>최종 검수 결과와 수정 파일을 확인한 뒤 납품용 산출물을 정리합니다.</p>
+        <ul>
+          <li>최종 결과 확인</li>
+          <li>파일 누락 점검</li>
+          <li>납품 자료 정리</li>
+        </ul>
+      </div>
+    </article>
+  </section>
+
+  <div class="note">
+    GitHub Pages에 올릴 때는 이 폴더의 <strong>index.html</strong>이 홈페이지로 열리고,
+    <strong>order_mismatch_review.html</strong>이 현재 만든 “주문번호 불일치 검수” 페이지로 연결됩니다.
+  </div>
+</main>
+</body>
+</html>
