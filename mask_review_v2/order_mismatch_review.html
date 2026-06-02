@@ -180,6 +180,25 @@ body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; 
 .add-info strong { display: block; margin-bottom: 4px; color: #2368a2; }
 .truth-sample-section { margin-bottom: 16px; }
 .truth-sample-title { font-size: 13px; font-weight: 700; color: #2c3e50; margin-bottom: 6px; }
+.truth-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.truth-title-row .truth-sample-title { margin-bottom: 0; }
+.truth-exclude-btn {
+  border: 1px solid #e67e22; background: #fff7ed; color: #b45309;
+  border-radius: 4px; padding: 4px 8px; font-size: 11px; font-weight: 800; cursor: pointer;
+}
+.truth-exclude-btn.active { background: #e67e22; color: #fff; }
+.truth-sample-section.excluded { opacity: 0.62; background: #f6f6f6; }
+.missing-note-btn {
+  border: 1px solid #f1c40f; background: #fff9db; color: #8a6d00;
+  border-radius: 4px; padding: 5px 9px; font-size: 12px; font-weight: 900; cursor: pointer;
+}
+.missing-note-btn.active { background: #f1c40f; color: #2c3e50; }
+.order-missing-note {
+  margin-bottom: 10px; padding: 9px 10px; background: #fff9db;
+  border: 1px solid #f1c40f; border-radius: 4px; color: #6f5500;
+  font-size: 13px; line-height: 1.5; font-weight: 700; white-space: pre-wrap;
+}
+.order-missing-note strong { display: block; margin-bottom: 4px; color: #8a6d00; }
 .truth-total-label { font-size: 22px; line-height: 1.1; color: #e67e22; font-weight: 900; margin-bottom: 5px; }
 .truth-total-count { font-size: 40px; line-height: 1.05; color: #2c3e50; font-weight: 900; }
 .truth-total-count span { font-size: 18px; color: #7f8c8d; margin-left: 4px; font-weight: 800; }
@@ -451,8 +470,8 @@ body {
       <div class="sidebar-section sticky-filter">
         <h3>Filter</h3>
         <div id="viewModeToggle" class="mode-toggle">
-          <button type="button" data-mode="barcode">아이템별</button>
-          <button type="button" data-mode="order" class="active">주문번호별</button>
+          <button type="button" data-mode="barcode" class="active">아이템별</button>
+          <button type="button" data-mode="order">주문번호별</button>
         </div>
         <input type="text" id="searchInput" placeholder="Search barcode / filename...">
         <select id="statusFilter">
@@ -543,9 +562,11 @@ let structure = {};
 let allCategories = [];
 let activeCategory = null;
 let activeGroup = null;
-let viewMode = 'order';
+let viewMode = 'barcode';
 let errorSet = new Set();
 let errorRecords = new Map();
+let excludedTruthItems = new Map(); // orderNo|barcode -> { order_no, barcode, qty }
+let orderMissingNotes = new Map();  // orderNo -> note
 let groupSelection = null;
 let deletedAnnotations = {};
 let deletedAnnotationIds = new Set();
@@ -1478,13 +1499,25 @@ function loadTruthSamples(orderNo) {
     const truthQty = correctionInfo.truthCounts && correctionInfo.truthCounts[barcode] ? correctionInfo.truthCounts[barcode] : 1;
     const currentQty = currentCounts[barcode] || 0;
     const stateClass = currentQty <= 0 ? 'missing' : (currentQty === truthQty ? 'match' : 'partial');
-    section.className = 'truth-sample-section ' + stateClass;
+    const excludeKey = getTruthExcludeKey(orderNo, barcode);
+    const isExcluded = excludedTruthItems.has(excludeKey);
+    section.className = 'truth-sample-section ' + stateClass + (isExcluded ? ' excluded' : '');
 
+    const titleRow = document.createElement('div');
+    titleRow.className = 'truth-title-row';
     const title = document.createElement('div');
     title.className = 'truth-sample-title';
     const files = sampleFileMap[barcode] || [];
     title.innerHTML = escapeHtml(barcode) + '<span class="qty-badge ' + getQtyClass(truthQty) + '">' + truthQty + '개</span>';
-    section.appendChild(title);
+    titleRow.appendChild(title);
+
+    const excludeBtn = document.createElement('button');
+    excludeBtn.type = 'button';
+    excludeBtn.className = 'truth-exclude-btn' + (isExcluded ? ' active' : '');
+    excludeBtn.textContent = isExcluded ? '제외됨' : '제외';
+    excludeBtn.onclick = () => toggleTruthExclude(orderNo, barcode, truthQty);
+    titleRow.appendChild(excludeBtn);
+    section.appendChild(titleRow);
 
     if (files.length === 0) {
       const empty = document.createElement('div');
@@ -1612,8 +1645,10 @@ function renderContent() {
     }
     if (activeCategory === 'item' && info.group_by === 'order') {
       const totalItems = filteredItems.length;
+      const hasMissingNote = orderMissingNotes.has(gk);
       const actionsHtml = groupSelection && activeGroup === gk ?
-        '<div class="group-header-actions"><button id="btnGroupConfirm" type="button">그룹 확인</button><button id="btnGroupCancel" type="button">취소</button></div>' : '';
+        '<div class="group-header-actions"><button id="btnMissingNote" class="missing-note-btn' + (hasMissingNote ? ' active' : '') + '" type="button">누락</button><button id="btnGroupConfirm" type="button">그룹 확인</button><button id="btnGroupCancel" type="button">취소</button></div>' :
+        '<div class="group-header-actions"><button id="btnMissingNote" class="missing-note-btn' + (hasMissingNote ? ' active' : '') + '" type="button">누락</button></div>';
       gh.innerHTML = '<div class="group-title-box"><h3>' + escapeHtml(gk) + '</h3>' +
         '<div class="group-total-label">총 아이템수</div>' +
         '<div class="group-total-count">' + totalItems.toLocaleString() + '<span>개</span></div></div>' +
@@ -1629,13 +1664,22 @@ function renderContent() {
     section.appendChild(gh);
     const confirmBtn = gh.querySelector('#btnGroupConfirm');
     const cancelBtn = gh.querySelector('#btnGroupCancel');
+    const missingBtn = gh.querySelector('#btnMissingNote');
     if (confirmBtn) confirmBtn.onclick = (e) => { e.stopPropagation(); confirmGroupSelection(); };
     if (cancelBtn) cancelBtn.onclick = (e) => { e.stopPropagation(); cancelGroupSelection(); };
+    if (missingBtn) missingBtn.onclick = (e) => { e.stopPropagation(); editOrderMissingNote(gk); };
 
     const gb = document.createElement('div');
     gb.className = 'group-body';
 
     if (activeCategory === 'item' && info.group_by === 'order') {
+      const missingNote = orderMissingNotes.get(gk);
+      if (missingNote) {
+        const noteInfo = document.createElement('div');
+        noteInfo.className = 'order-missing-note';
+        noteInfo.innerHTML = '<strong>누락 노트</strong>' + escapeHtml(missingNote);
+        gb.appendChild(noteInfo);
+      }
       const mismatchText = getOrderMismatchText(gk);
       if (mismatchText) {
         const mismatchInfo = document.createElement('div');
@@ -1779,6 +1823,40 @@ function getOrderMismatchText(orderNo) {
     .join('\n');
 }
 
+function getTruthExcludeKey(orderNo, barcode) {
+  return orderNo + '|' + barcode;
+}
+
+function toggleTruthExclude(orderNo, barcode, qty) {
+  const key = getTruthExcludeKey(orderNo, barcode);
+  if (excludedTruthItems.has(key)) {
+    excludedTruthItems.delete(key);
+  } else {
+    excludedTruthItems.set(key, { order_no: orderNo, barcode, qty });
+  }
+  modifiedOrderNos.add(orderNo);
+  dirty = true;
+  updateProgress();
+  renderContent();
+  if (activeCategory === 'item' && structure.item && structure.item.group_by === 'order' && activeGroup) {
+    loadTruthSamples(activeGroup);
+  }
+}
+
+function editOrderMissingNote(orderNo) {
+  const current = orderMissingNotes.get(orderNo) || '';
+  const note = prompt('누락 내용을 입력하세요. 예: PL02002463998 원본 이미지에 있음', current);
+  if (note === null) return;
+  const trimmed = note.trim();
+  if (trimmed) orderMissingNotes.set(orderNo, trimmed);
+  else orderMissingNotes.delete(orderNo);
+  modifiedOrderNos.add(orderNo);
+  dirty = true;
+  updateProgress();
+  renderSidebar();
+  renderContent();
+}
+
 function createItemCard(item) {
   const card = document.createElement('div');
   const orderNo = getOrderNoFromFileName(item.image_file) || item.shipment_id || '';
@@ -1879,7 +1957,6 @@ function createItemCard(item) {
   buttons.className = 'error-buttons';
   const options = [
     ['폴리곤 오류', '폴리곤 오류'],
-    ['누락', '누락'],
     ['삭제 처리', '삭제 처리'],
     ['그룹 처리', '그룹 처리'],
     ['기타', '기타'],
@@ -2166,7 +2243,7 @@ function updateProgress() {
   document.getElementById('totalCount').textContent = totalAnnotations.toLocaleString();
   const pct = totalAnnotations > 0 ? (count / totalAnnotations * 100) : 0;
   document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('btnExport').disabled = count === 0;
+  document.getElementById('btnExport').disabled = count === 0 && excludedTruthItems.size === 0 && orderMissingNotes.size === 0;
 }
 
 // ══════════════════════════════════════════
@@ -2323,7 +2400,10 @@ function loadExcelJS() {
 }
 
 async function exportXlsx() {
-  if (errorSet.size === 0) { alert('No error items checked.'); return; }
+  if (errorSet.size === 0 && excludedTruthItems.size === 0 && orderMissingNotes.size === 0) {
+    alert('No error/order notes checked.');
+    return;
+  }
 
   const btn = document.getElementById('btnExport');
   btn.textContent = 'Exporting...';
@@ -2332,6 +2412,36 @@ async function exportXlsx() {
   try {
     const ExcelJS = await loadExcelJS();
     const wb = new ExcelJS.Workbook();
+    const orderWs = wb.addWorksheet('order_notes');
+    orderWs.columns = [
+      { header: 'record_type', key: 'record_type', width: 18 },
+      { header: 'order_no', key: 'order_no', width: 22 },
+      { header: 'barcode', key: 'barcode', width: 22 },
+      { header: 'qty', key: 'qty', width: 10 },
+      { header: 'note', key: 'note', width: 60 },
+    ];
+    orderWs.getRow(1).font = { bold: true };
+
+    for (const item of excludedTruthItems.values()) {
+      orderWs.addRow({
+        record_type: '제외',
+        order_no: item.order_no,
+        barcode: item.barcode,
+        qty: item.qty || '',
+        note: '원본 이미지에 상품이 보이지 않아 어노테이션이 없는 것이 맞음',
+      });
+    }
+
+    for (const [orderNo, note] of orderMissingNotes.entries()) {
+      orderWs.addRow({
+        record_type: '누락',
+        order_no: orderNo,
+        barcode: '',
+        qty: '',
+        note,
+      });
+    }
+
     const ws = wb.addWorksheet('errors');
 
     // Headers
@@ -2420,7 +2530,7 @@ async function exportXlsx() {
     console.error(e);
   } finally {
     btn.textContent = 'Export XLSX';
-    btn.disabled = errorSet.size === 0;
+    btn.disabled = errorSet.size === 0 && excludedTruthItems.size === 0 && orderMissingNotes.size === 0;
   }
 }
 
