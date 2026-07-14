@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>조선 바운딩박스 검수툴</title>
+  <style>
+    :root {
+      --bg: #eef2f6;
+      --panel: #ffffff;
+      --text: #111827;
+      --muted: #667085;
+      --line: #d7dee8;
+      --soft: #f6f8fb;
+      --ink: #1f2937;
+      --accent: #2563eb;
+      --accent-2: #0f766e;
+      --danger: #dc2626;
+      --warn: #b45309;
+      --ok: #15803d;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      min-height: 100vh;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #172033;
+      color: white;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    h1 {
+      font-size: 18px;
+      line-height: 1.2;
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: rgba(255,255,255,0.78);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 12px;
+      padding: 12px;
+      min-height: 0;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .panel-body {
+      padding: 14px;
+      overflow: auto;
+      max-height: calc(100vh - 70px);
+    }
+
+    .stack { display: grid; gap: 12px; }
+
+    .field { display: grid; gap: 6px; }
+    .field label {
+      font-size: 12px;
+      font-weight: 800;
+      color: #344054;
+    }
+
+    input[type="file"] { display: none; }
+
+    .drop {
+      border: 1px dashed #98a2b3;
+      background: #f8fafc;
+      border-radius: var(--radius);
+      padding: 14px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .drop:hover { border-color: var(--accent); background: #f1f7ff; }
+    .drop.loaded { border-color: var(--ok); background: #f0fdf4; }
+    .drop strong { display: block; font-size: 13px; margin-bottom: 4px; }
+    .drop span { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; }
+
+    textarea, select, input[type="text"], input[type="number"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: white;
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      padding: 8px 10px;
+    }
+    textarea { min-height: 92px; resize: vertical; }
+
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      min-height: 34px;
+    }
+    button:hover { background: #f8fafc; }
+    button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+    button.primary:hover { background: #1d4ed8; }
+    button.success { background: var(--accent-2); color: white; border-color: var(--accent-2); }
+    button.danger { background: #fff5f5; color: var(--danger); border-color: #fecaca; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      background: var(--soft);
+    }
+    .stat .num { font-size: 20px; font-weight: 900; line-height: 1; }
+    .stat .label { color: var(--muted); font-size: 11px; margin-top: 4px; font-weight: 700; }
+    .num.ok { color: var(--ok); }
+    .num.warn { color: var(--warn); }
+    .num.err { color: var(--danger); }
+
+    .swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,.15); }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 200px auto;
+      gap: 8px;
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+      align-items: center;
+    }
+
+    .class-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+    .class-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: white;
+      color: var(--ink);
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      min-height: 0;
+    }
+    .class-chip:hover { border-color: var(--accent); }
+    .class-chip.active { background: #dbeafe; border-color: var(--accent); color: #1d4ed8; }
+    .class-chip .chip-swatch {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+
+
+    .gallery-wrap {
+      min-height: 0;
+      overflow: auto;
+      height: calc(100vh - 126px);
+      padding: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .gallery-empty {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      padding: 40px 0;
+    }
+
+    .thumb {
+      border: 2px solid transparent;
+      background: white;
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      box-shadow: 0 1px 2px rgba(16,24,40,.06);
+    }
+    .thumb:hover { border-color: #93c5fd; }
+    .thumb.active { border-color: var(--accent); }
+    .thumb.reviewed { border-color: var(--ok); }
+    .thumb.issue { border-color: var(--danger); }
+    .thumb.reviewed::before {
+      content: "✓";
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--ok);
+      color: white;
+      font-size: 10px;
+      font-weight: 900;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      z-index: 2;
+    }
+    .thumb.issue::before {
+      content: "!";
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--danger);
+      color: white;
+      font-size: 10px;
+      font-weight: 900;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      z-index: 2;
+    }
+    .thumb canvas {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      display: block;
+      background: #111827;
+    }
+    .thumb-foot {
+      padding: 8px;
+      border-top: 1px solid var(--line);
+      display: grid;
+      gap: 4px;
+    }
+    .thumb-name {
+      font-size: 11px;
+      line-height: 1.25;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .thumb-meta {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .viewer {
+      display: grid;
+      gap: 10px;
+    }
+    .viewer-main { min-width: 0; position: relative; }
+    .viewer-side { display: grid; gap: 10px; align-content: start; }
+    .canvas-frame {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: auto;
+      background: #111827;
+      max-height: 52vh;
+      display: grid;
+      place-items: safe center;
+    }
+    #mainCanvas {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+    .nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      min-height: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.25);
+      background: rgba(17,24,39,.55);
+      color: #fff;
+      font-size: 20px;
+      font-weight: 900;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      z-index: 3;
+    }
+    .nav-arrow:hover { background: rgba(37,99,235,.85); }
+    .nav-arrow:disabled { opacity: .25; cursor: not-allowed; background: rgba(17,24,39,.55); }
+    .nav-prev { left: 10px; }
+    .nav-next { right: 10px; }
+    .pos-counter {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    #viewerPanel {
+      display: none;
+    }
+    #viewerPanel.viewer-fullscreen {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel.viewer-fullscreen .panel-body {
+      max-height: none;
+      height: 100%;
+      overflow: hidden;
+      padding: 12px;
+    }
+    .panel.viewer-fullscreen .viewer {
+      grid-template-columns: 1fr 360px;
+      height: 100%;
+      min-height: 0;
+    }
+    .panel.viewer-fullscreen .viewer-main {
+      height: 100%;
+      display: flex;
+      min-height: 0;
+    }
+    .panel.viewer-fullscreen .canvas-frame {
+      max-height: none;
+      flex: 1 1 auto;
+      width: 100%;
+    }
+    .panel.viewer-fullscreen .viewer-side {
+      overflow: auto;
+      height: 100%;
+      padding-right: 4px;
+    }
+    @media (max-width: 900px) {
+      .panel.viewer-fullscreen .viewer { grid-template-columns: 1fr; grid-template-rows: 1fr auto; overflow: auto; }
+      .panel.viewer-fullscreen .canvas-frame { max-height: 46vh; }
+    }
+
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(17,24,39,.55);
+      display: grid;
+      place-items: center;
+      z-index: 500;
+      color: white;
+      font-size: 13px;
+      font-weight: 800;
+      gap: 12px;
+    }
+    .loading-overlay .spinner {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,.25);
+      border-top-color: #fff;
+      animation: spin .8s linear infinite;
+    }
+    .loading-box { display: grid; justify-items: center; gap: 10px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .meta-table {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: 12px;
+    }
+    .meta-row {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      border-bottom: 1px solid var(--line);
+    }
+    .meta-row:last-child { border-bottom: 0; }
+    .meta-key { background: var(--soft); color: var(--muted); padding: 8px; font-weight: 800; }
+    .meta-val { padding: 8px; overflow-wrap: anywhere; }
+
+    .issue-form { display: grid; gap: 10px; }
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    .check {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 7px 8px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      background: white;
+    }
+    .check:has(input:checked) {
+      border-color: #fca5a5;
+      background: #fff1f2;
+      color: #991b1b;
+      font-weight: 800;
+    }
+
+    .box-list {
+      display: grid;
+      gap: 6px;
+      max-height: 170px;
+      overflow: auto;
+    }
+    .box-row {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 7px 8px;
+      display: grid;
+      grid-template-columns: 18px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .issues-list {
+      display: grid;
+      gap: 6px;
+      max-height: 180px;
+      overflow: auto;
+    }
+    .issue-row {
+      border: 1px solid #fecaca;
+      background: #fff7f7;
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 12px;
+      display: grid;
+      gap: 4px;
+    }
+    .issue-row strong { overflow-wrap: anywhere; }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .hidden { display: none !important; }
+
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: 1fr; }
+      .panel-body { max-height: none; }
+      .gallery-wrap { height: auto; }
+      .toolbar { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>조선 바운딩박스 검수툴</h1>
+    <div class="header-meta">
+      <span id="statusText">이미지 폴더와 YOLO 라벨 폴더를 선택하세요.</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="panel-head">
+        <div class="panel-title">데이터</div>
+        <button onclick="resetAll()">초기화</button>
+      </div>
+      <div class="panel-body stack">
+        <div class="field">
+          <label>원본 이미지 폴더</label>
+          <div class="drop" id="imageDrop">
+            <strong>이미지 폴더 선택</strong>
+            <span>jpg, jpeg, png 파일을 하위 폴더까지 읽습니다. output 폴더가 있으면 그 안의 이미지만 사용합니다.</span>
+          </div>
+          <input id="imageInput" type="file" webkitdirectory multiple>
+        </div>
+
+        <div class="field">
+          <label>YOLO 라벨 폴더</label>
+          <div class="drop" id="labelDrop">
+            <strong>라벨 폴더 선택</strong>
+            <span>obj_train_data 안의 txt 또는 직접 선택한 txt를 읽습니다.</span>
+          </div>
+          <input id="labelInput" type="file" webkitdirectory multiple>
+        </div>
+
+        <div class="field">
+          <label>클래스 목록</label>
+          <textarea id="classInput">0_Burnt
+1_Hume
+2_Point_Burnt
+3_Point_hume
+4_Rust
+5_Rust_area
+6_Point_rust
+7_Chalk
+8_Feathering
+9_Zinc
+10_Oil
+11_M/D
+12_Blow_hole
+13_Spatter
+14_Weld</textarea>
+          <div class="hint">obj.names 파일이 라벨 폴더에 있으면 자동 반영됩니다. 누락 오류 선택에도 이 목록이 사용됩니다.</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="primary" id="runBtn" onclick="runValidation()" disabled>검수 시작</button>
+          <button onclick="exportCsv()" id="csvBtn" disabled>CSV 저장</button>
+          <button onclick="exportJson()" id="jsonBtn" disabled>JSON 저장</button>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div class="num" id="statImages">0</div><div class="label">이미지</div></div>
+          <div class="stat"><div class="num" id="statLabels">0</div><div class="label">라벨</div></div>
+          <div class="stat"><div class="num ok" id="statMatched">0</div><div class="label">매칭</div></div>
+          <div class="stat"><div class="num warn" id="statZero">0</div><div class="label">박스 0개</div></div>
+          <div class="stat"><div class="num" id="statBoxes">0</div><div class="label">전체 박스</div></div>
+          <div class="stat"><div class="num err" id="statIssues">0</div><div class="label">검수 오류</div></div>
+          <div class="stat"><div class="num ok" id="statReviewed">0</div><div class="label">검수 완료</div></div>
+          <div class="stat"><div class="num" id="statProgress">0%</div><div class="label">진행률</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <input id="searchInput" type="text" placeholder="파일명 검색">
+        <select id="filterSelect" onchange="renderGallery()">
+          <option value="all">전체 이미지</option>
+          <option value="unreviewed">미검수만</option>
+          <option value="issue">오류 입력됨</option>
+        </select>
+      </div>
+      <div class="class-chip-row" id="classChipRow"></div>
+      <div class="gallery-wrap">
+        <div class="grid" id="gallery"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="viewerPanel">
+      <div class="panel-head">
+        <div class="panel-title">상세 검수</div>
+        <div class="btn-row">
+          <span class="pos-counter" id="posCounter"></span>
+          <button onclick="prevItem()" title="이전 이미지 (←)">이전</button>
+          <button onclick="nextItem()" title="다음 이미지 (→)">다음</button>
+          <button id="fullscreenToggleBtn" onclick="toggleReviewMode()" title="크게 보고 하나씩 넘기며 검수">크게 보기</button>
+        </div>
+      </div>
+      <div class="panel-body viewer">
+        <div class="viewer-main">
+          <div class="canvas-frame" id="canvasFrame">
+            <button class="nav-arrow nav-prev" id="navPrevBtn" onclick="prevItem()" title="이전 이미지 (←)">‹</button>
+            <canvas id="mainCanvas"></canvas>
+            <button class="nav-arrow nav-next" id="navNextBtn" onclick="nextItem()" title="다음 이미지 (→)">›</button>
+          </div>
+        </div>
+
+        <div class="viewer-side">
+          <div class="meta-table" id="metaTable">
+            <div class="meta-row"><div class="meta-key">파일</div><div class="meta-val">선택된 이미지 없음</div></div>
+          </div>
+
+          <div class="field">
+            <label>박스 목록</label>
+            <div class="box-list" id="boxList"></div>
+          </div>
+
+          <div class="issue-form">
+            <div class="field">
+              <label>오류 타입</label>
+              <div class="check-grid" id="issueChecks"></div>
+            </div>
+            <div class="field" id="missingClassField">
+              <label>누락 클래스</label>
+              <select id="missingClassSelect"></select>
+            </div>
+            <div class="field">
+              <label>메모</label>
+              <textarea id="noteInput" placeholder="검수 메모를 입력하세요." oninput="updateCurrentIssue()"></textarea>
+            </div>
+            <div class="btn-row">
+              <button class="success" onclick="markOk()">정상 처리</button>
+              <button class="danger" onclick="clearCurrentIssue()">현재 오류 삭제</button>
+            </div>
+            <div class="hint">단축키: ←/→ 이전·다음 이미지, Esc 크게 보기 닫기</div>
+          </div>
+
+          <div class="field">
+            <label>오류 입력 목록</label>
+            <div class="issues-list" id="issuesList"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="loading-overlay hidden" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div id="loadingText">처리 중...</div>
+  </div>
+</div>
+
+<script>
+const PAGE_LIMIT = 1000;
+const DEFAULT_COLORS = ['#ef4444','#2563eb','#0f766e','#f59e0b','#7c3aed','#db2777','#16a34a','#0891b2','#ea580c','#4f46e5','#84cc16','#dc2626','#14b8a6','#facc15','#64748b'];
+const ISSUE_TYPES = [
+  ['wrong_class', '클래스 오류'],
+  ['wrong_box', '박스 위치/크기 오류'],
+  ['missing', '누락'],
+  ['duplicate', '중복'],
+  ['unnecessary', '불필요 박스'],
+  ['unclear', '판단 어려움'],
+  ['zero_box_check', '박스 없음 확인'],
+  ['other', '기타']
+];
+
+let imageFiles = [];
+let labelFiles = [];
+let imageMap = new Map();
+let labelMap = new Map();
+let classes = [];
+let classColors = {};
+let visibleClasses = new Set();
+let classFilter = '__all__'; // '__all__' or a single class name — which images the gallery shows
+let records = [];
+let currentIndex = -1;
+let issueMap = new Map();
+let reviewedSet = new Set();
+let objectUrlCache = new Map();
+let activeBoxIndex = -1;
+
+// review-mode ("하나씩 넘기기") navigation queue, snapshot of the filtered list at the
+// moment review mode was entered so marking a record OK/issue doesn't yank it out from
+// under the user mid-session
+let reviewQueue = [];
+let reviewPos = -1;
+
+let mainImageCache = new Map(); // File -> Promise<HTMLImageElement>
+let thumbBitmapCache = new Map(); // File -> Promise<ImageBitmap|HTMLImageElement>
+let galleryThumbMap = new Map(); // record.id -> { card, canvas }
+let galleryObserver = null;
+let searchDebounceTimer = null;
+
+const imageInput = document.getElementById('imageInput');
+const labelInput = document.getElementById('labelInput');
+const imageDrop = document.getElementById('imageDrop');
+const labelDrop = document.getElementById('labelDrop');
+const runBtn = document.getElementById('runBtn');
+
+imageDrop.addEventListener('click', () => imageInput.click());
+labelDrop.addEventListener('click', () => labelInput.click());
+imageInput.addEventListener('change', e => handleImages(e.target.files));
+labelInput.addEventListener('change', e => handleLabels(e.target.files));
+document.getElementById('searchInput').addEventListener('input', () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(renderGallery, 200);
+});
+document.getElementById('classInput').addEventListener('input', () => {
+  readClassInput();
+  renderClassControls();
+  renderCurrent();
+});
+document.getElementById('missingClassSelect').addEventListener('change', updateCurrentIssue);
+
+function normalizedStem(name) {
+  return name.replace(/^.*[\\/]/, '').replace(/\.[^/.]+$/, '').normalize('NFC').toLowerCase();
+}
+
+function filePath(file) {
+  return file.webkitRelativePath || file.name;
+}
+
+function handleImages(files) {
+  const all = Array.from(files).filter(f => /\.(jpg|jpeg|png)$/i.test(f.name));
+  // If the picked folder contains an "output" subfolder (the finalized image
+  // set), only match against those instead of every image under the whole
+  // source tree — otherwise unrelated source images bloat the gallery.
+  const outputOnly = all.filter(f => filePath(f).split(/[\\/]/).includes('output'));
+  imageFiles = outputOnly.length ? outputOnly : all;
+  imageDrop.classList.add('loaded');
+  imageDrop.querySelector('strong').textContent = `${imageFiles.length}개 이미지`;
+  imageDrop.querySelector('span').textContent = outputOnly.length ? `output 폴더 이미지만 사용 (전체 ${all.length}개 중)` : '선택 완료';
+  checkReady();
+}
+
+async function handleLabels(files) {
+  const all = Array.from(files);
+  const yoloTxt = all.filter(f => /\.txt$/i.test(f.name) && !/^(train|test|valid|classes)\.txt$/i.test(f.name));
+  const objTrainTxt = yoloTxt.filter(f => filePath(f).split(/[\\/]/).includes('obj_train_data'));
+  labelFiles = objTrainTxt.length ? objTrainTxt : yoloTxt;
+  const objNames = all.find(f => /obj\.names$/i.test(f.name));
+  if (objNames) {
+    const text = await objNames.text();
+    document.getElementById('classInput').value = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean).join('\n');
+    readClassInput();
+    renderClassControls();
+  }
+  labelDrop.classList.add('loaded');
+  labelDrop.querySelector('strong').textContent = `${labelFiles.length}개 라벨`;
+  labelDrop.querySelector('span').textContent = objNames ? 'obj.names 자동 반영됨' : '선택 완료';
+  checkReady();
+}
+
+function checkReady() {
+  runBtn.disabled = !(imageFiles.length && labelFiles.length);
+}
+
+function readClassInput() {
+  classes = document.getElementById('classInput').value.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean);
+  classes.forEach((name, idx) => {
+    if (!classColors[name]) classColors[name] = DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
+  });
+  visibleClasses = classFilter === '__all__' ? new Set(classes) : new Set([classFilter]);
+  renderMissingClassOptions();
+}
+
+function runValidation() {
+  readClassInput();
+  records = [];
+  issueMap.clear();
+  reviewedSet.clear();
+  reviewQueue = [];
+  reviewPos = -1;
+  imageMap = new Map();
+  labelMap = new Map();
+  activeBoxIndex = -1;
+  mainImageCache = new Map();
+  thumbBitmapCache = new Map();
+  showLoading('이미지·라벨 매칭 중...');
+
+  for (const file of imageFiles) {
+    const key = normalizedStem(file.name);
+    if (!imageMap.has(key)) imageMap.set(key, []);
+    imageMap.get(key).push(file);
+  }
+  for (const file of labelFiles) {
+    const key = normalizedStem(file.name);
+    if (!labelMap.has(key)) labelMap.set(key, []);
+    labelMap.get(key).push(file);
+  }
+
+  const allKeys = new Set([...imageMap.keys(), ...labelMap.keys()]);
+  const sortedKeys = Array.from(allKeys).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true, sensitivity: 'base' }));
+
+  for (const key of sortedKeys) {
+    const images = imageMap.get(key) || [];
+    const labels = labelMap.get(key) || [];
+    const status = images.length && labels.length ? 'matched' : images.length ? 'missing-label' : 'missing-image';
+    records.push({
+      id: key,
+      baseName: (images[0] || labels[0]).name.replace(/\.[^/.]+$/, ''),
+      imageFile: images[0] || null,
+      labelFile: labels[0] || null,
+      duplicateImages: Math.max(0, images.length - 1),
+      duplicateLabels: Math.max(0, labels.length - 1),
+      status,
+      boxes: [],
+      parseError: '',
+      imageSize: null
+    });
+  }
+
+  document.getElementById('loadingText').textContent = `라벨 분석 중... (0/${records.length})`;
+  let parsed = 0;
+  Promise.all(records.map(r => parseRecord(r).then(() => {
+    parsed++;
+    if (parsed % 25 === 0 || parsed === records.length) {
+      document.getElementById('loadingText').textContent = `라벨 분석 중... (${parsed}/${records.length})`;
+    }
+  }))).then(() => {
+    renderClassControls();
+    renderStats();
+    renderGallery();
+    const matchedIdx = records.findIndex(r => r.status === 'matched' && r.boxes.length > 0);
+    if (matchedIdx >= 0) {
+      selectRecord(matchedIdx);
+    } else {
+      currentIndex = -1;
+      updateGalleryHighlights();
+      updatePosCounter();
+      renderCurrent();
+    }
+    document.getElementById('csvBtn').disabled = false;
+    document.getElementById('jsonBtn').disabled = false;
+    document.getElementById('statusText').textContent = '검수 데이터를 불러왔습니다.';
+    hideLoading();
+  });
+}
+
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text;
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+async function parseRecord(record) {
+  if (!record.labelFile) return;
+  const text = await record.labelFile.text();
+  const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const boxes = [];
+  for (let i = 0; i < lines.length; i++) {
+    const parts = lines[i].split(/\s+/);
+    if (parts.length !== 5) {
+      record.parseError = `라벨 ${i + 1}행 형식 오류`;
+      continue;
+    }
+    const [cidRaw, xcRaw, ycRaw, wRaw, hRaw] = parts;
+    const classId = Number(cidRaw);
+    const xc = Number(xcRaw), yc = Number(ycRaw), bw = Number(wRaw), bh = Number(hRaw);
+    if (![classId, xc, yc, bw, bh].every(Number.isFinite)) {
+      record.parseError = `라벨 ${i + 1}행 숫자 오류`;
+      continue;
+    }
+    const className = classes[classId] || String(classId);
+    boxes.push({ classId, className, xc, yc, bw, bh, row: i + 1 });
+    if (!classColors[className]) classColors[className] = DEFAULT_COLORS[classId % DEFAULT_COLORS.length];
+    visibleClasses.add(className);
+  }
+  record.boxes = boxes;
+}
+
+function renderStats() {
+  const matched = records.filter(r => r.status === 'matched').length;
+  const zero = records.filter(r => r.status === 'matched' && r.boxes.length === 0).length;
+  const boxes = records.reduce((sum, r) => sum + r.boxes.length, 0);
+  const reviewed = records.filter(r => r.status === 'matched' && (reviewedSet.has(r.id) || issueMap.has(r.id))).length;
+  document.getElementById('statImages').textContent = imageFiles.length;
+  document.getElementById('statLabels').textContent = labelFiles.length;
+  document.getElementById('statMatched').textContent = matched;
+  document.getElementById('statZero').textContent = zero;
+  document.getElementById('statBoxes').textContent = boxes;
+  document.getElementById('statIssues').textContent = issueMap.size;
+  document.getElementById('statReviewed').textContent = reviewed;
+  document.getElementById('statProgress').textContent = matched ? `${Math.round(reviewed / matched * 100)}%` : '0%';
+}
+
+function isReviewed(record) {
+  return reviewedSet.has(record.id) || issueMap.has(record.id);
+}
+
+function renderClassControls() {
+  const all = Array.from(new Set(classes));
+  records.forEach(r => r.boxes.forEach(b => all.includes(b.className) || all.push(b.className)));
+  all.forEach((name, idx) => {
+    if (!classColors[name]) classColors[name] = DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
+  });
+  if (classFilter !== '__all__' && !all.includes(classFilter)) classFilter = '__all__';
+
+  const row = document.getElementById('classChipRow');
+  row.innerHTML = '';
+  row.appendChild(buildClassChip('__all__', '전체'));
+  all.forEach(name => row.appendChild(buildClassChip(name, name, classColors[name])));
+
+  renderMissingClassOptions();
+}
+
+function buildClassChip(value, label, color) {
+  const chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = `class-chip ${classFilter === value ? 'active' : ''}`;
+  chip.innerHTML = color ? `<span class="chip-swatch" style="background:${color}"></span>${escapeHtml(label)}` : escapeHtml(label);
+  chip.addEventListener('click', () => setClassFilter(value));
+  return chip;
+}
+
+function renderMissingClassOptions() {
+  const select = document.getElementById('missingClassSelect');
+  select.innerHTML = '<option value="">선택 안 함</option>';
+  classes.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    select.appendChild(opt);
+  });
+}
+
+function setClassFilter(value) {
+  classFilter = value;
+  visibleClasses = value === '__all__' ? new Set(classes) : new Set([value]);
+  renderClassControls();
+  renderGallery();
+  renderCurrent();
+}
+
+function filteredRecords() {
+  const q = document.getElementById('searchInput').value.trim().normalize('NFC').toLowerCase();
+  const f = document.getElementById('filterSelect').value;
+  return records.filter(r => {
+    // Gallery only ever shows images that actually have output (label box)
+    // data — matched-but-empty, missing-image, missing-label records are
+    // tracked in the stats panel but not surfaced here.
+    if (r.status !== 'matched' || r.boxes.length === 0) return false;
+    if (q && !r.baseName.normalize('NFC').toLowerCase().includes(q)) return false;
+    if (f === 'issue' && !issueMap.has(r.id)) return false;
+    if (f === 'unreviewed' && isReviewed(r)) return false;
+    if (classFilter !== '__all__' && !r.boxes.some(b => b.className === classFilter)) return false;
+    return true;
+  }).slice(0, PAGE_LIMIT);
+}
+
+function thumbClassName(record) {
+  return `thumb ${record.id === records[currentIndex]?.id ? 'active' : ''} ${issueMap.has(record.id) ? 'issue' : (isReviewed(record) ? 'reviewed' : '')}`;
+}
+
+// Full rebuild: only call when the *set/order* of visible thumbnails changes
+// (search, filter, or data reload). Thumbnails are decoded lazily as they
+// scroll into view instead of all-at-once, which is what made the gallery
+// feel slow with large datasets.
+function renderGallery() {
+  const gallery = document.getElementById('gallery');
+  gallery.innerHTML = '';
+  galleryThumbMap.clear();
+  if (galleryObserver) galleryObserver.disconnect();
+
+  const rows = filteredRecords();
+  if (!rows.length) {
+    gallery.innerHTML = '<div class="gallery-empty">조건에 맞는 이미지가 없습니다.</div>';
+    return;
+  }
+
+  galleryObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const canvas = entry.target;
+      const entryInfo = galleryThumbMap.get(canvas.dataset.recordId);
+      if (entryInfo && !canvas.dataset.rendered) {
+        canvas.dataset.rendered = '1';
+        drawThumbCanvas(entryInfo.record, canvas);
+      }
+      galleryObserver.unobserve(canvas);
+    });
+  }, { root: document.getElementById('gallery').closest('.gallery-wrap'), rootMargin: '600px 0px' });
+
+  rows.forEach(record => {
+    const card = document.createElement('div');
+    card.className = thumbClassName(record);
+    card.innerHTML = `
+      <canvas></canvas>
+      <div class="thumb-foot">
+        <div class="thumb-name" title="${escapeHtml(record.baseName)}">${escapeHtml(record.baseName)}</div>
+        <div class="thumb-meta"><span>${statusLabel(record)}</span><span>${record.boxes.length} boxes</span></div>
+      </div>
+    `;
+    const canvas = card.querySelector('canvas');
+    canvas.dataset.recordId = record.id;
+    card.addEventListener('click', () => {
+      reviewQueue = filteredRecords();
+      reviewPos = reviewQueue.indexOf(record);
+      selectRecord(records.indexOf(record));
+      enterReviewMode();
+    });
+    gallery.appendChild(card);
+    galleryThumbMap.set(record.id, { card, canvas, record });
+    galleryObserver.observe(canvas);
+  });
+}
+
+// Cheap update after selecting a record / marking an issue: just toggle the
+// active/issue/reviewed border classes on already-built thumb cards, no
+// re-decode of any image.
+function updateGalleryHighlights() {
+  galleryThumbMap.forEach(({ card, record }) => {
+    card.className = thumbClassName(record);
+  });
+}
+
+// Re-draw only thumbnails that have already been decoded once (bitmap is
+// cached, so this is cheap) after a view-mode or class-visibility change.
+function redrawVisibleThumbs() {
+  galleryThumbMap.forEach(({ canvas, record }) => {
+    if (canvas.dataset.rendered) drawThumbCanvas(record, canvas);
+  });
+}
+
+async function drawThumbCanvas(record, canvas) {
+  const ctx = canvas.getContext('2d');
+  if (!record.imageFile) {
+    canvas.width = 360;
+    canvas.height = Math.round(360 * 0.62);
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '18px sans-serif';
+    ctx.fillText('원본 이미지 누락', 18, 34);
+    return;
+  }
+  const bitmap = await loadThumbBitmap(record.imageFile);
+  if (!bitmap) return;
+  const w = bitmap.width, h = bitmap.height;
+  canvas.width = w;
+  canvas.height = h;
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  drawBoxes(ctx, record, w, h, record.imageSize?.width || w, record.imageSize?.height || h, false);
+}
+
+// Downscaled, decoded-once thumbnail bitmap per file. createImageBitmap with
+// resize options decodes directly at thumbnail resolution instead of
+// decoding the full-resolution image and scaling it down on every draw.
+function loadThumbBitmap(file) {
+  if (thumbBitmapCache.has(file)) return thumbBitmapCache.get(file);
+  const promise = (async () => {
+    if (window.createImageBitmap) {
+      try {
+        const full = await createImageBitmap(file);
+        const scale = Math.min(1, 360 / full.width);
+        const w = Math.max(1, Math.round(full.width * scale));
+        const h = Math.max(1, Math.round(full.height * scale));
+        const resized = await createImageBitmap(full, { resizeWidth: w, resizeHeight: h, resizeQuality: 'medium' });
+        full.close();
+        return resized;
+      } catch (e) {
+        // fall through to <img> based decoding below
+      }
+    }
+    // Fallback for browsers without createImageBitmap: decode via <img>, then
+    // bake a small offscreen canvas so we still hand back a thumbnail-sized
+    // drawable instead of a full-resolution image.
+    const img = await loadImage(file);
+    const scale = Math.min(1, 360 / img.naturalWidth);
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const off = document.createElement('canvas');
+    off.width = w;
+    off.height = h;
+    off.getContext('2d').drawImage(img, 0, 0, w, h);
+    return off;
+  })();
+  thumbBitmapCache.set(file, promise);
+  return promise;
+}
+
+function selectRecord(index) {
+  if (index < 0 || index >= records.length) return;
+  currentIndex = index;
+  activeBoxIndex = -1;
+  loadIssueToForm();
+  updateGalleryHighlights();
+  updatePosCounter();
+  renderCurrent();
+  prefetchNeighbors(index);
+}
+
+function updatePosCounter() {
+  const counter = document.getElementById('posCounter');
+  const record = records[currentIndex];
+  if (record && reviewQueue.length && reviewPos >= 0) {
+    counter.textContent = `${reviewPos + 1} / ${reviewQueue.length}`;
+  } else if (record) {
+    counter.textContent = `${currentIndex + 1} / ${records.length}`;
+  } else {
+    counter.textContent = '';
+  }
+  document.getElementById('navPrevBtn').disabled = !hasPrevItem();
+  document.getElementById('navNextBtn').disabled = !hasNextItem();
+}
+
+function ensureReviewQueue() {
+  if (!reviewQueue.length) {
+    reviewQueue = filteredRecords();
+    reviewPos = reviewQueue.indexOf(records[currentIndex]);
+  }
+}
+
+function hasPrevItem() {
+  ensureReviewQueue();
+  return reviewPos > 0;
+}
+
+function hasNextItem() {
+  ensureReviewQueue();
+  return reviewPos >= 0 && reviewPos < reviewQueue.length - 1;
+}
+
+function prevItem() {
+  ensureReviewQueue();
+  if (reviewPos > 0) {
+    reviewPos--;
+    selectRecord(records.indexOf(reviewQueue[reviewPos]));
+  }
+}
+
+function nextItem() {
+  ensureReviewQueue();
+  if (reviewPos >= 0 && reviewPos < reviewQueue.length - 1) {
+    reviewPos++;
+    selectRecord(records.indexOf(reviewQueue[reviewPos]));
+  }
+}
+
+function prefetchNeighbors(index) {
+  ensureReviewQueue();
+  [reviewPos - 1, reviewPos + 1].forEach(p => {
+    const record = reviewQueue[p];
+    if (record && record.imageFile) loadImage(record.imageFile).catch(() => {});
+  });
+}
+
+function enterReviewMode() {
+  document.getElementById('viewerPanel').classList.add('viewer-fullscreen');
+  document.getElementById('fullscreenToggleBtn').textContent = '닫기 (Esc)';
+  document.body.style.overflow = 'hidden';
+}
+
+function exitReviewMode() {
+  const panel = document.getElementById('viewerPanel');
+  if (!panel.classList.contains('viewer-fullscreen')) return;
+  panel.classList.remove('viewer-fullscreen');
+  document.getElementById('fullscreenToggleBtn').textContent = '크게 보기';
+  document.body.style.overflow = '';
+}
+
+function toggleReviewMode() {
+  if (document.getElementById('viewerPanel').classList.contains('viewer-fullscreen')) exitReviewMode();
+  else {
+    ensureReviewQueue();
+    enterReviewMode();
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { exitReviewMode(); return; }
+  const tag = document.activeElement ? document.activeElement.tagName : '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); nextItem(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevItem(); }
+});
+
+async function renderCurrent() {
+  const record = records[currentIndex];
+  const canvas = document.getElementById('mainCanvas');
+  const boxList = document.getElementById('boxList');
+  if (!record) {
+    canvas.width = 1; canvas.height = 1;
+    boxList.innerHTML = '';
+    document.getElementById('metaTable').innerHTML = '<div class="meta-row"><div class="meta-key">파일</div><div class="meta-val">선택된 이미지 없음</div></div>';
+    return;
+  }
+  await renderCanvas(canvas, record, 1200, true);
+  renderMeta(record);
+  boxList.innerHTML = record.boxes.length ? '' : '<div class="hint">박스가 없습니다.</div>';
+  record.boxes.forEach((box, idx) => {
+    const row = document.createElement('div');
+    row.className = 'box-row';
+    row.innerHTML = `<span class="swatch" style="background:${classColors[box.className] || '#888'}"></span><span>${idx + 1}. ${escapeHtml(box.className)}</span><button>선택</button>`;
+    row.querySelector('button').addEventListener('click', () => {
+      activeBoxIndex = idx;
+      renderCurrent();
+    });
+    boxList.appendChild(row);
+  });
+}
+
+async function renderCanvas(canvas, record, maxWidth, isMain = false) {
+  const ctx = canvas.getContext('2d');
+  if (!record.imageFile) {
+    canvas.width = maxWidth;
+    canvas.height = Math.round(maxWidth * 0.62);
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '18px sans-serif';
+    ctx.fillText('원본 이미지 누락', 18, 34);
+    return;
+  }
+  const img = await loadImage(record.imageFile);
+  record.imageSize = { width: img.naturalWidth, height: img.naturalHeight };
+  const scale = Math.min(1, maxWidth / img.naturalWidth);
+  const w = Math.max(1, Math.round(img.naturalWidth * scale));
+  const h = Math.max(1, Math.round(img.naturalHeight * scale));
+  canvas.width = w;
+  canvas.height = h;
+
+  ctx.drawImage(img, 0, 0, w, h);
+  drawBoxes(ctx, record, w, h, img.naturalWidth, img.naturalHeight, isMain);
+}
+
+function drawBoxes(ctx, record, canvasW, canvasH, imgW, imgH, isMain) {
+  ctx.save();
+  const scaleX = canvasW / imgW;
+  const scaleY = canvasH / imgH;
+  record.boxes.forEach((box, idx) => {
+    if (!visibleClasses.has(box.className)) return;
+    const color = classColors[box.className] || '#888';
+    const x = (box.xc - box.bw / 2) * imgW * scaleX;
+    const y = (box.yc - box.bh / 2) * imgH * scaleY;
+    const bw = box.bw * imgW * scaleX;
+    const bh = box.bh * imgH * scaleY;
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, bw, bh);
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = idx === activeBoxIndex ? 5 : Math.max(2, Math.round(Math.min(canvasW, canvasH) / 260));
+    ctx.strokeStyle = idx === activeBoxIndex ? '#ffffff' : color;
+    ctx.strokeRect(x, y, bw, bh);
+    if (isMain || canvasW > 300) {
+      const label = `${idx + 1} ${box.className}`;
+      ctx.font = `${Math.max(11, Math.round(canvasW / 55))}px sans-serif`;
+      const tw = ctx.measureText(label).width;
+      const th = Math.max(16, Math.round(canvasW / 45));
+      ctx.fillStyle = color;
+      ctx.fillRect(x, Math.max(0, y - th), tw + 10, th);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, x + 5, Math.max(12, y - 5));
+    }
+  });
+  ctx.restore();
+}
+
+function renderMeta(record) {
+  document.getElementById('metaTable').innerHTML = [
+    ['파일', record.baseName],
+    ['상태', statusLabel(record)],
+    ['라벨', record.labelFile ? filePath(record.labelFile) : '누락'],
+    ['이미지', record.imageFile ? filePath(record.imageFile) : '누락'],
+    ['크기', record.imageSize ? `${record.imageSize.width} x ${record.imageSize.height}` : '-'],
+    ['박스', String(record.boxes.length)],
+    ['파싱', record.parseError || '정상']
+  ].map(([k, v]) => `<div class="meta-row"><div class="meta-key">${k}</div><div class="meta-val">${escapeHtml(v)}</div></div>`).join('');
+}
+
+function buildIssueChecks() {
+  const wrap = document.getElementById('issueChecks');
+  wrap.innerHTML = '';
+  ISSUE_TYPES.forEach(([value, label]) => {
+    const item = document.createElement('label');
+    item.className = 'check';
+    item.innerHTML = `<input type="checkbox" value="${value}" onchange="updateCurrentIssue()"> ${label}`;
+    wrap.appendChild(item);
+  });
+}
+buildIssueChecks();
+
+function loadIssueToForm() {
+  const record = records[currentIndex];
+  const issue = record ? issueMap.get(record.id) : null;
+  document.querySelectorAll('#issueChecks input').forEach(input => input.checked = issue?.types?.includes(input.value) || false);
+  document.getElementById('missingClassSelect').value = issue?.missingClass || '';
+  document.getElementById('noteInput').value = issue?.note || '';
+}
+
+function updateCurrentIssue() {
+  const record = records[currentIndex];
+  if (!record) return;
+  const types = Array.from(document.querySelectorAll('#issueChecks input:checked')).map(i => i.value);
+  const missingClass = document.getElementById('missingClassSelect').value;
+  const note = document.getElementById('noteInput').value.trim();
+  if (!types.length && !missingClass && !note) issueMap.delete(record.id);
+  else issueMap.set(record.id, { id: record.id, file: record.baseName, types, missingClass, note, boxCount: record.boxes.length, status: record.status });
+  renderStats();
+  renderIssuesList();
+  updateGalleryHighlights();
+}
+
+function markOk() {
+  const record = records[currentIndex];
+  if (!record) return;
+  issueMap.delete(record.id);
+  reviewedSet.add(record.id);
+  loadIssueToForm();
+  renderStats();
+  renderIssuesList();
+  updateGalleryHighlights();
+}
+
+function clearCurrentIssue() {
+  const record = records[currentIndex];
+  if (!record) return;
+  issueMap.delete(record.id);
+  reviewedSet.delete(record.id);
+  loadIssueToForm();
+  renderStats();
+  renderIssuesList();
+  updateGalleryHighlights();
+}
+
+function renderIssuesList() {
+  const list = document.getElementById('issuesList');
+  const rows = Array.from(issueMap.values());
+  if (!rows.length) {
+    list.innerHTML = '<div class="hint">입력된 오류가 없습니다.</div>';
+    return;
+  }
+  list.innerHTML = rows.map(issue => `
+    <div class="issue-row">
+      <strong>${escapeHtml(issue.file)}</strong>
+      <span>${escapeHtml(issue.types.join(', ') || '-')} ${issue.missingClass ? ' / 누락: ' + escapeHtml(issue.missingClass) : ''}</span>
+      ${issue.note ? `<span>${escapeHtml(issue.note)}</span>` : ''}
+    </div>
+  `).join('');
+}
+renderIssuesList();
+
+function exportCsv() {
+  const header = ['file','status','box_count','reviewed','issue_types','missing_class','note'];
+  const lines = [header.join(',')];
+  records.forEach(record => {
+    const issue = issueMap.get(record.id) || {};
+    lines.push([
+      record.baseName,
+      record.status,
+      record.boxes.length,
+      isReviewed(record) ? 'yes' : 'no',
+      (issue.types || []).join('|'),
+      issue.missingClass || '',
+      issue.note || ''
+    ].map(csvCell).join(','));
+  });
+  downloadBlob('\ufeff' + lines.join('\n'), 'joseon_bbox_qc_result.csv', 'text/csv;charset=utf-8');
+}
+
+function exportJson() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    summary: {
+      images: imageFiles.length,
+      labels: labelFiles.length,
+      matched: records.filter(r => r.status === 'matched').length,
+      zeroBox: records.filter(r => r.status === 'matched' && r.boxes.length === 0).length,
+      boxes: records.reduce((sum, r) => sum + r.boxes.length, 0),
+      issues: issueMap.size,
+      reviewed: records.filter(r => r.status === 'matched' && isReviewed(r)).length
+    },
+    issues: Array.from(issueMap.values()),
+    unreviewedFiles: records.filter(r => r.status === 'matched' && !isReviewed(r)).map(r => r.baseName),
+    zeroBoxFiles: records.filter(r => r.status === 'matched' && r.boxes.length === 0).map(r => r.baseName),
+    missingImages: records.filter(r => r.status === 'missing-image').map(r => r.baseName),
+    missingLabels: records.filter(r => r.status === 'missing-label').map(r => r.baseName)
+  };
+  downloadBlob(JSON.stringify(payload, null, 2), 'joseon_bbox_qc_result.json', 'application/json;charset=utf-8');
+}
+
+function downloadBlob(content, name, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function loadImage(file) {
+  if (mainImageCache.has(file)) return mainImageCache.get(file);
+  const promise = new Promise((resolve, reject) => {
+    if (!objectUrlCache.has(file)) objectUrlCache.set(file, URL.createObjectURL(file));
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = objectUrlCache.get(file);
+  });
+  mainImageCache.set(file, promise);
+  return promise;
+}
+
+function statusLabel(record) {
+  if (record.status === 'missing-image') return '이미지 누락';
+  if (record.status === 'missing-label') return '라벨 누락';
+  if (record.duplicateImages || record.duplicateLabels) return '중복 있음';
+  if (record.parseError) return '라벨 오류';
+  return '매칭';
+}
+
+function resetAll() {
+  exitReviewMode();
+  classFilter = '__all__';
+  objectUrlCache.forEach(url => URL.revokeObjectURL(url));
+  objectUrlCache.clear();
+  if (galleryObserver) galleryObserver.disconnect();
+  galleryThumbMap.clear();
+  mainImageCache = new Map();
+  thumbBitmapCache = new Map();
+  reviewQueue = [];
+  reviewPos = -1;
+  imageFiles = [];
+  labelFiles = [];
+  records = [];
+  currentIndex = -1;
+  issueMap.clear();
+  reviewedSet.clear();
+  imageInput.value = '';
+  labelInput.value = '';
+  imageDrop.classList.remove('loaded');
+  labelDrop.classList.remove('loaded');
+  imageDrop.querySelector('strong').textContent = '이미지 폴더 선택';
+  imageDrop.querySelector('span').textContent = 'jpg, jpeg, png 파일을 하위 폴더까지 읽습니다. output 폴더가 있으면 그 안의 이미지만 사용합니다.';
+  labelDrop.querySelector('strong').textContent = '라벨 폴더 선택';
+  labelDrop.querySelector('span').textContent = 'obj_train_data 안의 txt 또는 직접 선택한 txt를 읽습니다.';
+  runBtn.disabled = true;
+  document.getElementById('csvBtn').disabled = true;
+  document.getElementById('jsonBtn').disabled = true;
+  document.getElementById('gallery').innerHTML = '';
+  document.getElementById('boxList').innerHTML = '';
+  document.getElementById('mainCanvas').width = 1;
+  document.getElementById('mainCanvas').height = 1;
+  document.getElementById('posCounter').textContent = '';
+  document.getElementById('statusText').textContent = '이미지 폴더와 YOLO 라벨 폴더를 선택하세요.';
+  renderStats();
+  renderIssuesList();
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+readClassInput();
+renderClassControls();
+renderMissingClassOptions();
+</script>
+</body>
+</html>
