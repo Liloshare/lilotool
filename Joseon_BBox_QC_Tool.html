@@ -476,14 +476,33 @@
       align-items: center;
       justify-content: space-between;
     }
-    .compare-grid {
+    .compare-body {
       flex: 1 1 auto;
       overflow: auto;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      grid-template-columns: 1fr 320px;
       gap: 14px;
       padding: 14px;
+      align-items: start;
+    }
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
       align-content: start;
+    }
+    .compare-issue-form {
+      display: grid;
+      gap: 10px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      position: sticky;
+      top: 0;
+    }
+    @media (max-width: 900px) {
+      .compare-body { grid-template-columns: 1fr; }
     }
     .compare-panel {
       background: var(--panel);
@@ -649,7 +668,7 @@
 
         <div class="btn-row">
           <button class="primary" id="runBtn" onclick="runValidation()" disabled>검수 시작</button>
-          <button onclick="exportCsv()" id="csvBtn" disabled>CSV 저장</button>
+          <button onclick="exportCsv()" id="csvBtn" disabled>엑셀 저장</button>
           <button onclick="exportJson()" id="jsonBtn" disabled>JSON 저장</button>
         </div>
 
@@ -757,7 +776,28 @@
     <div class="panel-title" id="compareTitle">중복 파일 비교</div>
     <button onclick="closeCompareView()">닫기 (Esc)</button>
   </div>
-  <div class="compare-grid" id="compareGrid"></div>
+  <div class="compare-body">
+    <div class="compare-grid" id="compareGrid"></div>
+    <div class="compare-issue-form">
+      <div class="field">
+        <label>오류 타입</label>
+        <div class="check-grid" id="compareIssueChecks"></div>
+      </div>
+      <div class="field">
+        <label>누락 클래스</label>
+        <select id="compareMissingClassSelect"></select>
+      </div>
+      <div class="field">
+        <label>메모</label>
+        <textarea id="compareNoteInput" placeholder="어느 라벨을 써야 할지, 무엇이 문제인지 메모하세요." oninput="updateCompareIssue()"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="success" onclick="markCompareOk()">정상 처리</button>
+        <button class="danger" onclick="clearCompareIssue()">현재 오류 삭제</button>
+      </div>
+      <div class="hint">이 오류는 중복 파일 그룹 전체에 기록되며, 엑셀 저장 시 "중복 파일명" 탭에 별도로 포함됩니다.</div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -992,12 +1032,16 @@ function findImageForSource(record, source) {
   return record.allImageFiles.find(f => fileSourceTag(f) === source) || record.imageFile;
 }
 
+let currentCompareRecord = null;
+
 async function openCompareView(record) {
+  currentCompareRecord = record;
   const variants = record.labelVariants || [];
   document.getElementById('compareTitle').textContent = `중복 파일 비교 — ${record.baseName}`;
   const grid = document.getElementById('compareGrid');
   grid.innerHTML = '';
   document.getElementById('compareModal').classList.remove('hidden');
+  loadCompareIssueForm(record);
 
   for (const variant of variants) {
     const panel = document.createElement('div');
@@ -1021,6 +1065,61 @@ async function openCompareView(record) {
 
 function closeCompareView() {
   document.getElementById('compareModal').classList.add('hidden');
+  currentCompareRecord = null;
+}
+
+function buildCompareIssueChecks() {
+  const wrap = document.getElementById('compareIssueChecks');
+  wrap.innerHTML = '';
+  ISSUE_TYPES.forEach(([value, label]) => {
+    const item = document.createElement('label');
+    item.className = 'check';
+    item.innerHTML = `<input type="checkbox" value="${value}" onchange="updateCompareIssue()"> ${label}`;
+    wrap.appendChild(item);
+  });
+}
+buildCompareIssueChecks();
+
+function loadCompareIssueForm(record) {
+  const issue = issueMap.get(record.id);
+  document.querySelectorAll('#compareIssueChecks input').forEach(input => input.checked = issue?.types?.includes(input.value) || false);
+  document.getElementById('compareMissingClassSelect').value = issue?.missingClass || '';
+  document.getElementById('compareNoteInput').value = issue?.note || '';
+}
+
+function updateCompareIssue() {
+  const record = currentCompareRecord;
+  if (!record) return;
+  const types = Array.from(document.querySelectorAll('#compareIssueChecks input:checked')).map(i => i.value);
+  const missingClass = document.getElementById('compareMissingClassSelect').value;
+  const note = document.getElementById('compareNoteInput').value.trim();
+  if (!types.length && !missingClass && !note) issueMap.delete(record.id);
+  else issueMap.set(record.id, { id: record.id, file: record.baseName, types, missingClass, note, boxCount: record.boxes.length, status: record.status });
+  renderStats();
+  renderIssuesList();
+  updateGalleryHighlights();
+}
+
+function markCompareOk() {
+  const record = currentCompareRecord;
+  if (!record) return;
+  issueMap.delete(record.id);
+  reviewedSet.add(record.id);
+  loadCompareIssueForm(record);
+  renderStats();
+  renderIssuesList();
+  updateGalleryHighlights();
+}
+
+function clearCompareIssue() {
+  const record = currentCompareRecord;
+  if (!record) return;
+  issueMap.delete(record.id);
+  reviewedSet.delete(record.id);
+  loadCompareIssueForm(record);
+  renderStats();
+  renderIssuesList();
+  updateGalleryHighlights();
 }
 
 // Shared YOLO-line parser used both for a record's primary label file and,
@@ -1112,13 +1211,15 @@ function buildClassChip(value, label, color) {
 }
 
 function renderMissingClassOptions() {
-  const select = document.getElementById('missingClassSelect');
-  select.innerHTML = '<option value="">선택 안 함</option>';
-  classes.forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
-    select.appendChild(opt);
+  ['missingClassSelect', 'compareMissingClassSelect'].forEach(id => {
+    const select = document.getElementById(id);
+    select.innerHTML = '<option value="">선택 안 함</option>';
+    classes.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
   });
 }
 
@@ -1158,7 +1259,10 @@ function filteredRecords() {
 function thumbClassName(record) {
   const dup = record.isVariant || isDuplicate(record);
   const dupOrZero = dup ? 'dup' : (record.boxes.length === 0 ? 'zero-box' : '');
-  return `thumb ${record.id === records[currentIndex]?.id ? 'active' : ''} ${issueMap.has(record.id) ? 'issue' : (isReviewed(record) ? 'reviewed' : '')} ${dupOrZero}`;
+  // A variant card's issue/review state belongs to its parent duplicate
+  // group's id, not the variant's own synthetic id.
+  const checkId = record.isVariant ? record.parentRecord.id : record.id;
+  return `thumb ${record.id === records[currentIndex]?.id ? 'active' : ''} ${issueMap.has(checkId) ? 'issue' : (isReviewed({ id: checkId }) ? 'reviewed' : '')} ${dupOrZero}`;
 }
 
 function thumbOrderLabel(record) {
@@ -1705,12 +1809,172 @@ function reviewableRecords() {
   return records.filter(r => r.status === 'matched' && r.boxes.length > 0 && !isDuplicate(r));
 }
 
+// ---------------------------------------------------------------------
+// Minimal, dependency-free .xlsx writer. An xlsx is a ZIP archive of OOXML
+// parts; we only need a handful of them, and by storing entries uncompressed
+// (ZIP "store" method) we can skip implementing DEFLATE entirely while still
+// producing a file real Excel/Numbers/Sheets opens correctly with multiple
+// named sheets/tabs.
+// ---------------------------------------------------------------------
+
+function xlsxColumnName(index) {
+  let s = '';
+  let n = index + 1;
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+function xmlEscape(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[ch]));
+}
+
+function buildSheetXml(rows) {
+  const rowsXml = rows.map((row, ri) => {
+    const cells = row.map((val, ci) => {
+      const ref = xlsxColumnName(ci) + (ri + 1);
+      if (typeof val === 'number' && Number.isFinite(val)) {
+        return `<c r="${ref}"><v>${val}</v></c>`;
+      }
+      return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(val)}</t></is></c>`;
+    }).join('');
+    return `<row r="${ri + 1}">${cells}</row>`;
+  }).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rowsXml}</sheetData></worksheet>`;
+}
+
+function buildWorkbookXml(sheetNames) {
+  const sheetsXml = sheetNames.map((name, i) => `<sheet name="${xmlEscape(name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheetsXml}</sheets></workbook>`;
+}
+
+function buildWorkbookRelsXml(sheetNames) {
+  const rels = sheetNames.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels}</Relationships>`;
+}
+
+function buildContentTypesXml(sheetNames) {
+  const overrides = sheetNames.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${overrides}</Types>`;
+}
+
+const XLSX_ROOT_RELS_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes) {
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) crc = CRC32_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+// Builds an uncompressed (store-method) ZIP from [{name, data: Uint8Array}].
+function buildZip(files) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  files.forEach(file => {
+    const nameBytes = new TextEncoder().encode(file.name);
+    const data = file.data;
+    const crc = crc32(data);
+    const size = data.length;
+
+    const localHeader = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(localHeader.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0, true);
+    lv.setUint16(8, 0, true);
+    lv.setUint16(10, 0, true);
+    lv.setUint16(12, 0, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, size, true);
+    lv.setUint32(22, size, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    localHeader.set(nameBytes, 30);
+    localParts.push(localHeader, data);
+
+    const centralHeader = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(centralHeader.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, 0, true);
+    cv.setUint16(14, 0, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, size, true);
+    cv.setUint32(24, size, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
+    centralHeader.set(nameBytes, 46);
+    centralParts.push(centralHeader);
+
+    offset += localHeader.length + data.length;
+  });
+
+  const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
+  const centralOffset = offset;
+
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, centralSize, true);
+  ev.setUint32(16, centralOffset, true);
+  ev.setUint16(20, 0, true);
+
+  return new Blob([...localParts, ...centralParts, end], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+// sheets: [{ name, rows: [[cell, ...], ...] }]
+function downloadXlsx(sheets, filename) {
+  const encoder = new TextEncoder();
+  const sheetNames = sheets.map(s => s.name);
+  const files = [
+    { name: '[Content_Types].xml', data: encoder.encode(buildContentTypesXml(sheetNames)) },
+    { name: '_rels/.rels', data: encoder.encode(XLSX_ROOT_RELS_XML) },
+    { name: 'xl/workbook.xml', data: encoder.encode(buildWorkbookXml(sheetNames)) },
+    { name: 'xl/_rels/workbook.xml.rels', data: encoder.encode(buildWorkbookRelsXml(sheetNames)) },
+    ...sheets.map((s, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, data: encoder.encode(buildSheetXml(s.rows)) }))
+  ];
+  const blob = buildZip(files);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function exportCsv() {
-  const header = ['order','file','box_count','reviewed','issue_types','missing_class','note'];
-  const lines = [header.join(',')];
+  const mainHeader = ['order', 'file', 'box_count', 'reviewed', 'issue_types', 'missing_class', 'note'];
+  const mainRows = [mainHeader];
   reviewableRecords().forEach(record => {
     const issue = issueMap.get(record.id) || {};
-    lines.push([
+    mainRows.push([
       record.order,
       record.baseName,
       record.boxes.length,
@@ -1718,9 +1982,28 @@ function exportCsv() {
       (issue.types || []).join('|'),
       issue.missingClass || '',
       issue.note || ''
-    ].map(csvCell).join(','));
+    ]);
   });
-  downloadBlob('\ufeff' + lines.join('\n'), 'joseon_bbox_qc_result.csv', 'text/csv;charset=utf-8');
+
+  const dupHeader = ['file', 'variants', 'reviewed', 'issue_types', 'missing_class', 'note'];
+  const dupRows = [dupHeader];
+  records.filter(r => r.status === 'matched' && isDuplicate(r)).forEach(record => {
+    const issue = issueMap.get(record.id) || {};
+    const variants = (record.labelVariants || []).map(v => `${v.source}:${v.boxCount}\ubc15\uc2a4`).join(' | ');
+    dupRows.push([
+      record.baseName,
+      variants,
+      isReviewed(record) ? 'yes' : 'no',
+      (issue.types || []).join('|'),
+      issue.missingClass || '',
+      issue.note || ''
+    ]);
+  });
+
+  downloadXlsx([
+    { name: '\uac80\uc218\uacb0\uacfc', rows: mainRows },
+    { name: '\uc911\ubcf5\ud30c\uc77c\uba85', rows: dupRows }
+  ], 'joseon_bbox_qc_result.xlsx');
 }
 
 function exportJson() {
@@ -1767,11 +2050,6 @@ function downloadBlob(content, name, type) {
   a.download = name;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-function csvCell(value) {
-  const text = String(value ?? '');
-  return `"${text.replace(/"/g, '""')}"`;
 }
 
 function loadImage(file) {
