@@ -6,18 +6,20 @@
   <title>조선 바운딩박스 검수툴</title>
   <style>
     :root {
-      --bg: #eef2f6;
+      --bg: #f3f0fb;
       --panel: #ffffff;
-      --text: #111827;
-      --muted: #667085;
-      --line: #d7dee8;
-      --soft: #f6f8fb;
-      --ink: #1f2937;
-      --accent: #2563eb;
-      --accent-2: #0f766e;
-      --danger: #dc2626;
-      --warn: #b45309;
-      --ok: #15803d;
+      --text: #4a4560;
+      --muted: #948fb3;
+      --line: #e6e1f5;
+      --soft: #f6f3fc;
+      --ink: #55506e;
+      --accent: #6b84dc;
+      --accent-2: #4fa38c;
+      --danger: #d1637d;
+      --warn: #c98a3e;
+      --ok: #4f9d6e;
+      --dark: #2c2a3d;
+      --dark-rgb: 44, 42, 61;
       --radius: 8px;
     }
 
@@ -37,7 +39,7 @@
     }
 
     header {
-      background: #172033;
+      background: #5d5a86;
       color: white;
       padding: 14px 20px;
       display: flex;
@@ -83,7 +85,7 @@
     .panel-head {
       padding: 12px 14px;
       border-bottom: 1px solid var(--line);
-      background: #fbfcfe;
+      background: #f9f6fd;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -107,21 +109,21 @@
     .field label {
       font-size: 12px;
       font-weight: 800;
-      color: #344054;
+      color: #55506e;
     }
 
     input[type="file"] { display: none; }
 
     .drop {
-      border: 1px dashed #98a2b3;
-      background: #f8fafc;
+      border: 1px dashed #c3bcdb;
+      background: #f8f5fc;
       border-radius: var(--radius);
       padding: 14px;
       cursor: pointer;
       transition: border-color .15s, background .15s;
     }
-    .drop:hover { border-color: var(--accent); background: #f1f7ff; }
-    .drop.loaded { border-color: var(--ok); background: #f0fdf4; }
+    .drop:hover { border-color: var(--accent); background: #eaeefb; }
+    .drop.loaded { border-color: var(--ok); background: #eaf6ef; }
     .drop strong { display: block; font-size: 13px; margin-bottom: 4px; }
     .drop span { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; }
 
@@ -149,11 +151,11 @@
       cursor: pointer;
       min-height: 34px;
     }
-    button:hover { background: #f8fafc; }
+    button:hover { background: #f8f5fc; }
     button.primary { background: var(--accent); color: white; border-color: var(--accent); }
-    button.primary:hover { background: #1d4ed8; }
+    button.primary:hover { background: #5570c9; }
     button.success { background: var(--accent-2); color: white; border-color: var(--accent-2); }
-    button.danger { background: #fff5f5; color: var(--danger); border-color: #fecaca; }
+    button.danger { background: #fbeef1; color: var(--danger); border-color: #eec4d0; }
     button:disabled { opacity: .45; cursor: not-allowed; }
 
     .stats {
@@ -181,7 +183,7 @@
       gap: 8px;
       padding: 10px;
       border-bottom: 1px solid var(--line);
-      background: #fbfcfe;
+      background: #f9f6fd;
       align-items: center;
     }
 
@@ -191,7 +193,7 @@
       gap: 6px;
       padding: 8px 10px;
       border-bottom: 1px solid var(--line);
-      background: #fbfcfe;
+      background: #f9f6fd;
     }
     .class-chip {
       display: inline-flex;
@@ -208,7 +210,7 @@
       min-height: 0;
     }
     .class-chip:hover { border-color: var(--accent); }
-    .class-chip.active { background: #dbeafe; border-color: var(--accent); color: #1d4ed8; }
+    .class-chip.active { background: #e1e6fa; border-color: var(--accent); color: #5570c9; }
     .class-chip .chip-swatch {
       width: 9px;
       height: 9px;
@@ -246,10 +248,28 @@
       position: relative;
       box-shadow: 0 1px 2px rgba(16,24,40,.06);
     }
-    .thumb:hover { border-color: #93c5fd; }
+    .thumb:hover { border-color: #aebdf0; }
+    .thumb.dup { border-color: var(--warn); }
+    .thumb.zero-box { border-color: var(--muted); }
     .thumb.active { border-color: var(--accent); }
     .thumb.reviewed { border-color: var(--ok); }
     .thumb.issue { border-color: var(--danger); }
+    .thumb-order {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      max-width: calc(100% - 16px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      background: rgba(var(--dark-rgb),.72);
+      color: white;
+      font-size: 10px;
+      font-weight: 900;
+      padding: 3px 7px;
+      border-radius: 4px;
+      z-index: 2;
+    }
     .thumb.reviewed::before {
       content: "✓";
       position: absolute;
@@ -286,7 +306,7 @@
       width: 100%;
       aspect-ratio: 16 / 10;
       display: block;
-      background: #111827;
+      background: var(--dark);
     }
     .thumb-foot {
       padding: 8px;
@@ -320,7 +340,7 @@
       border: 1px solid var(--line);
       border-radius: var(--radius);
       overflow: auto;
-      background: #111827;
+      background: var(--dark);
       max-height: 52vh;
       display: grid;
       place-items: safe center;
@@ -329,6 +349,7 @@
       max-width: 100%;
       height: auto;
       display: block;
+      cursor: zoom-in;
     }
     .nav-arrow {
       position: absolute;
@@ -339,7 +360,7 @@
       min-height: 0;
       border-radius: 50%;
       border: 1px solid rgba(255,255,255,.25);
-      background: rgba(17,24,39,.55);
+      background: rgba(var(--dark-rgb),.55);
       color: #fff;
       font-size: 20px;
       font-weight: 900;
@@ -348,8 +369,8 @@
       cursor: pointer;
       z-index: 3;
     }
-    .nav-arrow:hover { background: rgba(37,99,235,.85); }
-    .nav-arrow:disabled { opacity: .25; cursor: not-allowed; background: rgba(17,24,39,.55); }
+    .nav-arrow:hover { background: rgba(107,132,220,.85); }
+    .nav-arrow:disabled { opacity: .25; cursor: not-allowed; background: rgba(var(--dark-rgb),.55); }
     .nav-prev { left: 10px; }
     .nav-next { right: 10px; }
     .pos-counter {
@@ -358,6 +379,21 @@
       font-weight: 800;
       white-space: nowrap;
     }
+    #mainViewToggleBtn.active { background: #e1e6fa; color: #5570c9; border-color: var(--accent); }
+
+    .magnifier {
+      position: fixed;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 4px 18px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.15);
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 600;
+      background: var(--dark);
+    }
+    .magnifier canvas { width: 100%; height: 100%; display: block; }
 
     #viewerPanel {
       display: none;
@@ -404,7 +440,7 @@
     .loading-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(17,24,39,.55);
+      background: rgba(var(--dark-rgb),.55);
       display: grid;
       place-items: center;
       z-index: 500;
@@ -423,6 +459,51 @@
     }
     .loading-box { display: grid; justify-items: center; gap: 10px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    .compare-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 550;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+    }
+    .compare-head {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .compare-grid {
+      flex: 1 1 auto;
+      overflow: auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 14px;
+      padding: 14px;
+      align-content: start;
+    }
+    .compare-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .compare-panel canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: var(--dark);
+    }
+    .compare-caption {
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--ink);
+      border-top: 1px solid var(--line);
+    }
 
     .meta-table {
       border: 1px solid var(--line);
@@ -457,9 +538,9 @@
       background: white;
     }
     .check:has(input:checked) {
-      border-color: #fca5a5;
-      background: #fff1f2;
-      color: #991b1b;
+      border-color: #eec4d0;
+      background: #fbeef1;
+      color: #a94d68;
       font-weight: 800;
     }
 
@@ -487,8 +568,8 @@
       overflow: auto;
     }
     .issue-row {
-      border: 1px solid #fecaca;
-      background: #fff7f7;
+      border: 1px solid #eec4d0;
+      background: #fbf2f4;
       border-radius: 6px;
       padding: 8px;
       font-size: 12px;
@@ -577,6 +658,7 @@
           <div class="stat"><div class="num" id="statLabels">0</div><div class="label">라벨</div></div>
           <div class="stat"><div class="num ok" id="statMatched">0</div><div class="label">매칭</div></div>
           <div class="stat"><div class="num warn" id="statZero">0</div><div class="label">박스 0개</div></div>
+          <div class="stat"><div class="num warn" id="statDuplicate">0</div><div class="label">중복 파일명</div></div>
           <div class="stat"><div class="num" id="statBoxes">0</div><div class="label">전체 박스</div></div>
           <div class="stat"><div class="num err" id="statIssues">0</div><div class="label">검수 오류</div></div>
           <div class="stat"><div class="num ok" id="statReviewed">0</div><div class="label">검수 완료</div></div>
@@ -592,6 +674,8 @@
           <option value="all">전체 이미지</option>
           <option value="unreviewed">미검수만</option>
           <option value="issue">오류 입력됨</option>
+          <option value="duplicate">중복 파일명</option>
+          <option value="zero">박스 없음</option>
         </select>
       </div>
       <div class="class-chip-row" id="classChipRow"></div>
@@ -605,6 +689,7 @@
         <div class="panel-title">상세 검수</div>
         <div class="btn-row">
           <span class="pos-counter" id="posCounter"></span>
+          <button id="mainViewToggleBtn" onclick="toggleMainViewMode()" title="박스 오버레이 / 원본 이미지 전환">원본 보기</button>
           <button onclick="prevItem()" title="이전 이미지 (←)">이전</button>
           <button onclick="nextItem()" title="다음 이미지 (→)">다음</button>
           <button id="fullscreenToggleBtn" onclick="toggleReviewMode()" title="크게 보고 하나씩 넘기며 검수">크게 보기</button>
@@ -616,6 +701,7 @@
             <button class="nav-arrow nav-prev" id="navPrevBtn" onclick="prevItem()" title="이전 이미지 (←)">‹</button>
             <canvas id="mainCanvas"></canvas>
             <button class="nav-arrow nav-next" id="navNextBtn" onclick="nextItem()" title="다음 이미지 (→)">›</button>
+            <div class="magnifier hidden" id="magnifier"><canvas id="magnifierCanvas"></canvas></div>
           </div>
         </div>
 
@@ -666,9 +752,17 @@
   </div>
 </div>
 
+<div class="compare-modal hidden" id="compareModal">
+  <div class="compare-head">
+    <div class="panel-title" id="compareTitle">중복 파일 비교</div>
+    <button onclick="closeCompareView()">닫기 (Esc)</button>
+  </div>
+  <div class="compare-grid" id="compareGrid"></div>
+</div>
+
 <script>
 const PAGE_LIMIT = 1000;
-const DEFAULT_COLORS = ['#ef4444','#2563eb','#0f766e','#f59e0b','#7c3aed','#db2777','#16a34a','#0891b2','#ea580c','#4f46e5','#84cc16','#dc2626','#14b8a6','#facc15','#64748b'];
+const DEFAULT_COLORS = ['#f2867a','#6f9ce0','#5fb3a3','#f0b45c','#a685e8','#e87aa8','#6cbf7f','#5fb8cc','#ef9a5c','#8b85e8','#b3d967','#cc7070','#6ecfbe','#f5d76e','#9aa3b8'];
 const ISSUE_TYPES = [
   ['wrong_class', '클래스 오류'],
   ['wrong_box', '박스 위치/크기 오류'],
@@ -688,6 +782,9 @@ let classes = [];
 let classColors = {};
 let visibleClasses = new Set();
 let classFilter = '__all__'; // '__all__' or a single class name — which images the gallery shows
+let reviewableTotal = 0; // count of matched+has-boxes records, for the stable #order badge
+let mainViewMode = 'overlay'; // 'overlay' | 'image' — single-image review canvas only
+let magnifierImg = null; // full-res <img> for the currently selected record, used by the lens
 let records = [];
 let currentIndex = -1;
 let issueMap = new Map();
@@ -817,10 +914,13 @@ function runValidation() {
       baseName: (images[0] || labels[0]).name.replace(/\.[^/.]+$/, ''),
       imageFile: images[0] || null,
       labelFile: labels[0] || null,
+      allImageFiles: images,
+      allLabelFiles: labels,
       duplicateImages: Math.max(0, images.length - 1),
       duplicateLabels: Math.max(0, labels.length - 1),
       status,
       boxes: [],
+      labelVariants: null,
       parseError: '',
       imageSize: null
     });
@@ -834,10 +934,20 @@ function runValidation() {
       document.getElementById('loadingText').textContent = `라벨 분석 중... (${parsed}/${records.length})`;
     }
   }))).then(() => {
+    // Stable review order (#1, #2, ...) assigned once over the reviewable set
+    // (matched + has boxes) in filename order — doesn't shift when the user
+    // later filters/searches, so it can be used to find where a paused
+    // review session left off.
+    let orderCounter = 0;
+    records.forEach(r => {
+      r.order = (r.status === 'matched' && r.boxes.length > 0 && !isDuplicate(r)) ? ++orderCounter : null;
+    });
+    reviewableTotal = orderCounter;
+
     renderClassControls();
     renderStats();
     renderGallery();
-    const matchedIdx = records.findIndex(r => r.status === 'matched' && r.boxes.length > 0);
+    const matchedIdx = records.findIndex(r => r.status === 'matched' && r.boxes.length > 0 && !isDuplicate(r));
     if (matchedIdx >= 0) {
       selectRecord(matchedIdx);
     } else {
@@ -862,22 +972,76 @@ function hideLoading() {
   document.getElementById('loadingOverlay').classList.add('hidden');
 }
 
-async function parseRecord(record) {
-  if (!record.labelFile) return;
-  const text = await record.labelFile.text();
+function isDuplicate(record) {
+  return record.duplicateImages > 0 || record.duplicateLabels > 0;
+}
+
+// Immediate parent folder name, used to tell duplicate copies of the same
+// filename apart (e.g. two "IMG_1234.txt" living under different category
+// folders) without assuming any particular folder-naming convention.
+function fileSourceTag(file) {
+  const path = filePath(file);
+  const parts = path.split(/[\\/]/);
+  return parts.length > 1 ? parts[parts.length - 2] : path;
+}
+
+// Best-effort pairing of a label variant with "its" image copy: prefer the
+// image living under the same immediate folder, fall back to the first
+// image if the folder layout doesn't line up 1:1.
+function findImageForSource(record, source) {
+  return record.allImageFiles.find(f => fileSourceTag(f) === source) || record.imageFile;
+}
+
+async function openCompareView(record) {
+  const variants = record.labelVariants || [];
+  document.getElementById('compareTitle').textContent = `중복 파일 비교 — ${record.baseName}`;
+  const grid = document.getElementById('compareGrid');
+  grid.innerHTML = '';
+  document.getElementById('compareModal').classList.remove('hidden');
+
+  for (const variant of variants) {
+    const panel = document.createElement('div');
+    panel.className = 'compare-panel';
+    panel.innerHTML = `<canvas></canvas><div class="compare-caption">${escapeHtml(variant.source)} — ${variant.boxCount}박스</div>`;
+    grid.appendChild(panel);
+    const canvas = panel.querySelector('canvas');
+    const imageFile = findImageForSource(record, variant.source);
+    if (!imageFile) continue;
+    const img = await loadImage(imageFile);
+    const scale = Math.min(1, 900 / img.naturalWidth);
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    drawBoxes(ctx, { boxes: variant.boxes }, w, h, img.naturalWidth, img.naturalHeight, true);
+  }
+}
+
+function closeCompareView() {
+  document.getElementById('compareModal').classList.add('hidden');
+}
+
+// Shared YOLO-line parser used both for a record's primary label file and,
+// for duplicate-filename records, every other candidate label file so their
+// full box sets (not just counts) are available for the compare view.
+async function parseBoxesFromFile(file) {
+  const text = await file.text();
   const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   const boxes = [];
+  let parseError = '';
   for (let i = 0; i < lines.length; i++) {
     const parts = lines[i].split(/\s+/);
     if (parts.length !== 5) {
-      record.parseError = `라벨 ${i + 1}행 형식 오류`;
+      parseError = `라벨 ${i + 1}행 형식 오류`;
       continue;
     }
     const [cidRaw, xcRaw, ycRaw, wRaw, hRaw] = parts;
     const classId = Number(cidRaw);
     const xc = Number(xcRaw), yc = Number(ycRaw), bw = Number(wRaw), bh = Number(hRaw);
     if (![classId, xc, yc, bw, bh].every(Number.isFinite)) {
-      record.parseError = `라벨 ${i + 1}행 숫자 오류`;
+      parseError = `라벨 ${i + 1}행 숫자 오류`;
       continue;
     }
     const className = classes[classId] || String(classId);
@@ -885,18 +1049,33 @@ async function parseRecord(record) {
     if (!classColors[className]) classColors[className] = DEFAULT_COLORS[classId % DEFAULT_COLORS.length];
     visibleClasses.add(className);
   }
+  return { boxes, parseError };
+}
+
+async function parseRecord(record) {
+  if (record.duplicateLabels > 0) {
+    record.labelVariants = await Promise.all(record.allLabelFiles.map(async f => {
+      const { boxes } = await parseBoxesFromFile(f);
+      return { source: fileSourceTag(f), boxCount: boxes.length, boxes, file: f };
+    }));
+  }
+  if (!record.labelFile) return;
+  const { boxes, parseError } = await parseBoxesFromFile(record.labelFile);
   record.boxes = boxes;
+  if (parseError) record.parseError = parseError;
 }
 
 function renderStats() {
   const matched = records.filter(r => r.status === 'matched').length;
-  const zero = records.filter(r => r.status === 'matched' && r.boxes.length === 0).length;
+  const zero = records.filter(r => r.status === 'matched' && r.boxes.length === 0 && !isDuplicate(r)).length;
+  const duplicate = records.filter(r => r.status === 'matched' && isDuplicate(r)).length;
   const boxes = records.reduce((sum, r) => sum + r.boxes.length, 0);
   const reviewed = records.filter(r => r.status === 'matched' && (reviewedSet.has(r.id) || issueMap.has(r.id))).length;
   document.getElementById('statImages').textContent = imageFiles.length;
   document.getElementById('statLabels').textContent = labelFiles.length;
   document.getElementById('statMatched').textContent = matched;
   document.getElementById('statZero').textContent = zero;
+  document.getElementById('statDuplicate').textContent = duplicate;
   document.getElementById('statBoxes').textContent = boxes;
   document.getElementById('statIssues').textContent = issueMap.size;
   document.getElementById('statReviewed').textContent = reviewed;
@@ -951,37 +1130,84 @@ function setClassFilter(value) {
   renderCurrent();
 }
 
+// The gallery is split into three mutually exclusive buckets so that files
+// with an unresolved filename collision (duplicate) or with no box data
+// (zero) never silently show up mixed into the normal "전체"/class-filtered
+// view — they only appear when their own filter tab is selected.
 function filteredRecords() {
   const q = document.getElementById('searchInput').value.trim().normalize('NFC').toLowerCase();
   const f = document.getElementById('filterSelect').value;
   return records.filter(r => {
-    // Gallery only ever shows images that actually have output (label box)
-    // data — matched-but-empty, missing-image, missing-label records are
-    // tracked in the stats panel but not surfaced here.
-    if (r.status !== 'matched' || r.boxes.length === 0) return false;
+    if (r.status !== 'matched') return false;
+    const dup = isDuplicate(r);
+    if (f === 'duplicate') {
+      if (!dup) return false;
+    } else if (f === 'zero') {
+      if (dup || r.boxes.length !== 0) return false;
+    } else {
+      if (dup || r.boxes.length === 0) return false;
+      if (f === 'issue' && !issueMap.has(r.id)) return false;
+      if (f === 'unreviewed' && isReviewed(r)) return false;
+    }
     if (q && !r.baseName.normalize('NFC').toLowerCase().includes(q)) return false;
-    if (f === 'issue' && !issueMap.has(r.id)) return false;
-    if (f === 'unreviewed' && isReviewed(r)) return false;
     if (classFilter !== '__all__' && !r.boxes.some(b => b.className === classFilter)) return false;
     return true;
   }).slice(0, PAGE_LIMIT);
 }
 
 function thumbClassName(record) {
-  return `thumb ${record.id === records[currentIndex]?.id ? 'active' : ''} ${issueMap.has(record.id) ? 'issue' : (isReviewed(record) ? 'reviewed' : '')}`;
+  const dup = record.isVariant || isDuplicate(record);
+  const dupOrZero = dup ? 'dup' : (record.boxes.length === 0 ? 'zero-box' : '');
+  return `thumb ${record.id === records[currentIndex]?.id ? 'active' : ''} ${issueMap.has(record.id) ? 'issue' : (isReviewed(record) ? 'reviewed' : '')} ${dupOrZero}`;
+}
+
+function thumbOrderLabel(record) {
+  if (record.isVariant) return record.variantSource;
+  if (record.order) return `#${record.order}`;
+  if (isDuplicate(record)) return '중복';
+  if (record.status === 'matched' && record.boxes.length === 0) return '0박스';
+  return '-';
 }
 
 // Full rebuild: only call when the *set/order* of visible thumbnails changes
 // (search, filter, or data reload). Thumbnails are decoded lazily as they
 // scroll into view instead of all-at-once, which is what made the gallery
 // feel slow with large datasets.
+// In the "중복 파일명" filter, every duplicate copy (one per conflicting
+// label file) gets its own thumbnail card instead of collapsing the whole
+// group into a single card — so all versions are visible side by side in
+// the grid itself, not hidden behind a click.
+function duplicateVariantRows() {
+  const q = document.getElementById('searchInput').value.trim().normalize('NFC').toLowerCase();
+  const rows = [];
+  records.forEach(r => {
+    if (r.status !== 'matched' || !isDuplicate(r)) return;
+    if (q && !r.baseName.normalize('NFC').toLowerCase().includes(q)) return;
+    (r.labelVariants || []).forEach((variant, i) => {
+      rows.push({
+        id: `${r.id}__v${i}`,
+        baseName: r.baseName,
+        imageFile: findImageForSource(r, variant.source),
+        boxes: variant.boxes,
+        status: 'matched',
+        order: null,
+        isVariant: true,
+        variantSource: variant.source,
+        parentRecord: r
+      });
+    });
+  });
+  return rows.slice(0, PAGE_LIMIT);
+}
+
 function renderGallery() {
   const gallery = document.getElementById('gallery');
   gallery.innerHTML = '';
   galleryThumbMap.clear();
   if (galleryObserver) galleryObserver.disconnect();
 
-  const rows = filteredRecords();
+  const isDuplicateView = document.getElementById('filterSelect').value === 'duplicate';
+  const rows = isDuplicateView ? duplicateVariantRows() : filteredRecords();
   if (!rows.length) {
     gallery.innerHTML = '<div class="gallery-empty">조건에 맞는 이미지가 없습니다.</div>';
     return;
@@ -1004,6 +1230,7 @@ function renderGallery() {
     const card = document.createElement('div');
     card.className = thumbClassName(record);
     card.innerHTML = `
+      <div class="thumb-order">${thumbOrderLabel(record)}</div>
       <canvas></canvas>
       <div class="thumb-foot">
         <div class="thumb-name" title="${escapeHtml(record.baseName)}">${escapeHtml(record.baseName)}</div>
@@ -1013,6 +1240,10 @@ function renderGallery() {
     const canvas = card.querySelector('canvas');
     canvas.dataset.recordId = record.id;
     card.addEventListener('click', () => {
+      if (record.isVariant) {
+        openCompareView(record.parentRecord);
+        return;
+      }
       reviewQueue = filteredRecords();
       reviewPos = reviewQueue.indexOf(record);
       selectRecord(records.indexOf(record));
@@ -1046,7 +1277,7 @@ async function drawThumbCanvas(record, canvas) {
   if (!record.imageFile) {
     canvas.width = 360;
     canvas.height = Math.round(360 * 0.62);
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = '#2c2a3d';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#ffffff';
     ctx.font = '18px sans-serif';
@@ -1187,7 +1418,7 @@ function toggleReviewMode() {
 }
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { exitReviewMode(); return; }
+  if (e.key === 'Escape') { closeCompareView(); exitReviewMode(); return; }
   const tag = document.activeElement ? document.activeElement.tagName : '';
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   if (e.key === 'ArrowRight') { e.preventDefault(); nextItem(); }
@@ -1205,12 +1436,13 @@ async function renderCurrent() {
     return;
   }
   await renderCanvas(canvas, record, 1200, true);
+  magnifierImg = record.imageFile ? await loadImage(record.imageFile) : null;
   renderMeta(record);
   boxList.innerHTML = record.boxes.length ? '' : '<div class="hint">박스가 없습니다.</div>';
   record.boxes.forEach((box, idx) => {
     const row = document.createElement('div');
     row.className = 'box-row';
-    row.innerHTML = `<span class="swatch" style="background:${classColors[box.className] || '#888'}"></span><span>${idx + 1}. ${escapeHtml(box.className)}</span><button>선택</button>`;
+    row.innerHTML = `<span class="swatch" style="background:${classColors[box.className] || '#a8a4bd'}"></span><span>${idx + 1}. ${escapeHtml(box.className)}</span><button>선택</button>`;
     row.querySelector('button').addEventListener('click', () => {
       activeBoxIndex = idx;
       renderCurrent();
@@ -1224,7 +1456,7 @@ async function renderCanvas(canvas, record, maxWidth, isMain = false) {
   if (!record.imageFile) {
     canvas.width = maxWidth;
     canvas.height = Math.round(maxWidth * 0.62);
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = '#2c2a3d';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#ffffff';
     ctx.font = '18px sans-serif';
@@ -1240,7 +1472,21 @@ async function renderCanvas(canvas, record, maxWidth, isMain = false) {
   canvas.height = h;
 
   ctx.drawImage(img, 0, 0, w, h);
-  drawBoxes(ctx, record, w, h, img.naturalWidth, img.naturalHeight, isMain);
+  if (!isMain || mainViewMode === 'overlay') {
+    drawBoxes(ctx, record, w, h, img.naturalWidth, img.naturalHeight, isMain);
+  }
+}
+
+function toggleMainViewMode() {
+  mainViewMode = mainViewMode === 'overlay' ? 'image' : 'overlay';
+  updateMainViewToggleBtn();
+  renderCurrent();
+}
+
+function updateMainViewToggleBtn() {
+  const btn = document.getElementById('mainViewToggleBtn');
+  btn.textContent = mainViewMode === 'overlay' ? '원본 보기' : '오버레이 보기';
+  btn.classList.toggle('active', mainViewMode === 'image');
 }
 
 function drawBoxes(ctx, record, canvasW, canvasH, imgW, imgH, isMain) {
@@ -1249,7 +1495,7 @@ function drawBoxes(ctx, record, canvasW, canvasH, imgW, imgH, isMain) {
   const scaleY = canvasH / imgH;
   record.boxes.forEach((box, idx) => {
     if (!visibleClasses.has(box.className)) return;
-    const color = classColors[box.className] || '#888';
+    const color = classColors[box.className] || '#a8a4bd';
     const x = (box.xc - box.bw / 2) * imgW * scaleX;
     const y = (box.yc - box.bh / 2) * imgH * scaleY;
     const bw = box.bw * imgW * scaleX;
@@ -1275,8 +1521,87 @@ function drawBoxes(ctx, record, canvasW, canvasH, imgW, imgH, isMain) {
   ctx.restore();
 }
 
+const MAGNIFIER_SIZE = 220;
+const MAGNIFIER_ZOOM = 1.5;
+
+function initMagnifier() {
+  const canvas = document.getElementById('mainCanvas');
+  const lens = document.getElementById('magnifier');
+  canvas.addEventListener('mouseenter', () => {
+    if (magnifierImg) lens.classList.remove('hidden');
+  });
+  canvas.addEventListener('mousemove', (e) => {
+    if (magnifierImg) drawMagnifier(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('mouseleave', () => lens.classList.add('hidden'));
+}
+
+function drawMagnifier(clientX, clientY) {
+  const canvas = document.getElementById('mainCanvas');
+  const record = records[currentIndex];
+  if (!record || !magnifierImg) return;
+  const rect = canvas.getBoundingClientRect();
+  const dispX = clientX - rect.left;
+  const dispY = clientY - rect.top;
+  if (dispX < 0 || dispY < 0 || dispX > rect.width || dispY > rect.height) {
+    document.getElementById('magnifier').classList.add('hidden');
+    return;
+  }
+
+  const imgW = magnifierImg.naturalWidth, imgH = magnifierImg.naturalHeight;
+  const origX = (dispX / rect.width) * imgW;
+  const origY = (dispY / rect.height) * imgH;
+  const cropW = Math.min(imgW, MAGNIFIER_SIZE / MAGNIFIER_ZOOM);
+  const cropH = Math.min(imgH, MAGNIFIER_SIZE / MAGNIFIER_ZOOM);
+  const sx = Math.max(0, Math.min(origX - cropW / 2, imgW - cropW));
+  const sy = Math.max(0, Math.min(origY - cropH / 2, imgH - cropH));
+
+  const lensCanvas = document.getElementById('magnifierCanvas');
+  lensCanvas.width = MAGNIFIER_SIZE;
+  lensCanvas.height = MAGNIFIER_SIZE;
+  const ctx = lensCanvas.getContext('2d');
+  ctx.clearRect(0, 0, MAGNIFIER_SIZE, MAGNIFIER_SIZE);
+  ctx.drawImage(magnifierImg, sx, sy, cropW, cropH, 0, 0, MAGNIFIER_SIZE, MAGNIFIER_SIZE);
+  if (mainViewMode === 'overlay') {
+    drawLensBoxes(ctx, record, sx, sy, cropW, cropH, imgW, imgH);
+  }
+
+  // Centered directly above the cursor (with a small gap) so it's easy to
+  // read without hunting for it elsewhere on screen; flips below the cursor
+  // near the top edge, and clamps horizontally so it never runs offscreen.
+  const lens = document.getElementById('magnifier');
+  const gap = 14;
+  let left = clientX - MAGNIFIER_SIZE / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - MAGNIFIER_SIZE - 8));
+  let top = clientY - MAGNIFIER_SIZE - gap;
+  if (top < 8) top = clientY + gap;
+  lens.style.left = `${left}px`;
+  lens.style.top = `${top}px`;
+  lens.classList.remove('hidden');
+}
+
+function drawLensBoxes(ctx, record, sx, sy, cropW, cropH, imgW, imgH) {
+  ctx.save();
+  const scaleX = MAGNIFIER_SIZE / cropW;
+  const scaleY = MAGNIFIER_SIZE / cropH;
+  record.boxes.forEach((box, idx) => {
+    if (!visibleClasses.has(box.className)) return;
+    const color = classColors[box.className] || '#a8a4bd';
+    const x = ((box.xc - box.bw / 2) * imgW - sx) * scaleX;
+    const y = ((box.yc - box.bh / 2) * imgH - sy) * scaleY;
+    const w = box.bw * imgW * scaleX;
+    const h = box.bh * imgH * scaleY;
+    ctx.lineWidth = idx === activeBoxIndex ? 3 : 2;
+    ctx.strokeStyle = idx === activeBoxIndex ? '#ffffff' : color;
+    ctx.strokeRect(x, y, w, h);
+  });
+  ctx.restore();
+}
+initMagnifier();
+
 function renderMeta(record) {
-  document.getElementById('metaTable').innerHTML = [
+  const rows = [
+    ['순서', record.order ? `${record.order} / ${reviewableTotal}` : '-'],
     ['파일', record.baseName],
     ['상태', statusLabel(record)],
     ['라벨', record.labelFile ? filePath(record.labelFile) : '누락'],
@@ -1285,6 +1610,19 @@ function renderMeta(record) {
     ['박스', String(record.boxes.length)],
     ['파싱', record.parseError || '정상']
   ].map(([k, v]) => `<div class="meta-row"><div class="meta-key">${k}</div><div class="meta-val">${escapeHtml(v)}</div></div>`).join('');
+
+  let dupRow = '';
+  if (isDuplicate(record)) {
+    const parts = [];
+    if (record.duplicateImages > 0) parts.push(`이미지 파일 ${record.duplicateImages + 1}개 동일 파일명`);
+    if (record.labelVariants) {
+      const variantText = record.labelVariants.map(v => `${escapeHtml(v.source)}: ${v.boxCount}박스`).join('<br>');
+      parts.push(variantText);
+    }
+    dupRow = `<div class="meta-row"><div class="meta-key">중복</div><div class="meta-val">${parts.join('<br>')}</div></div>`;
+  }
+
+  document.getElementById('metaTable').innerHTML = rows + dupRow;
 }
 
 function buildIssueChecks() {
@@ -1359,14 +1697,22 @@ function renderIssuesList() {
 }
 renderIssuesList();
 
+// Only images that actually carry label data are worth a row in the QC
+// export \u2014 matching what the gallery shows. missing-image/missing-label/
+// zero-box counts are still surfaced as summary numbers (see exportJson)
+// instead of drowning the useful rows in thousands of source-photo noise.
+function reviewableRecords() {
+  return records.filter(r => r.status === 'matched' && r.boxes.length > 0 && !isDuplicate(r));
+}
+
 function exportCsv() {
-  const header = ['file','status','box_count','reviewed','issue_types','missing_class','note'];
+  const header = ['order','file','box_count','reviewed','issue_types','missing_class','note'];
   const lines = [header.join(',')];
-  records.forEach(record => {
+  reviewableRecords().forEach(record => {
     const issue = issueMap.get(record.id) || {};
     lines.push([
+      record.order,
       record.baseName,
-      record.status,
       record.boxes.length,
       isReviewed(record) ? 'yes' : 'no',
       (issue.types || []).join('|'),
@@ -1378,20 +1724,35 @@ function exportCsv() {
 }
 
 function exportJson() {
+  const reviewable = reviewableRecords();
   const payload = {
     exportedAt: new Date().toISOString(),
     summary: {
       images: imageFiles.length,
       labels: labelFiles.length,
       matched: records.filter(r => r.status === 'matched').length,
-      zeroBox: records.filter(r => r.status === 'matched' && r.boxes.length === 0).length,
+      reviewable: reviewable.length,
+      zeroBox: records.filter(r => r.status === 'matched' && r.boxes.length === 0 && !isDuplicate(r)).length,
+      duplicateFilenames: records.filter(r => r.status === 'matched' && isDuplicate(r)).length,
       boxes: records.reduce((sum, r) => sum + r.boxes.length, 0),
       issues: issueMap.size,
-      reviewed: records.filter(r => r.status === 'matched' && isReviewed(r)).length
+      reviewed: reviewable.filter(isReviewed).length
     },
-    issues: Array.from(issueMap.values()),
-    unreviewedFiles: records.filter(r => r.status === 'matched' && !isReviewed(r)).map(r => r.baseName),
-    zeroBoxFiles: records.filter(r => r.status === 'matched' && r.boxes.length === 0).map(r => r.baseName),
+    records: reviewable.map(r => ({
+      order: r.order,
+      file: r.baseName,
+      boxCount: r.boxes.length,
+      reviewed: isReviewed(r),
+      ...(issueMap.get(r.id) || {})
+    })),
+    unreviewedFiles: reviewable.filter(r => !isReviewed(r)).map(r => r.baseName),
+    zeroBoxFiles: records.filter(r => r.status === 'matched' && r.boxes.length === 0 && !isDuplicate(r)).map(r => r.baseName),
+    duplicateFiles: records.filter(r => r.status === 'matched' && isDuplicate(r)).map(r => ({
+      file: r.baseName,
+      duplicateImages: r.duplicateImages,
+      duplicateLabels: r.duplicateLabels,
+      labelVariants: r.labelVariants
+    })),
     missingImages: records.filter(r => r.status === 'missing-image').map(r => r.baseName),
     missingLabels: records.filter(r => r.status === 'missing-label').map(r => r.baseName)
   };
@@ -1436,7 +1797,12 @@ function statusLabel(record) {
 
 function resetAll() {
   exitReviewMode();
+  closeCompareView();
   classFilter = '__all__';
+  reviewableTotal = 0;
+  mainViewMode = 'overlay';
+  magnifierImg = null;
+  updateMainViewToggleBtn();
   objectUrlCache.forEach(url => URL.revokeObjectURL(url));
   objectUrlCache.clear();
   if (galleryObserver) galleryObserver.disconnect();
